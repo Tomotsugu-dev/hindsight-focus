@@ -150,7 +150,7 @@ test("Store records while idle and paused; history write failure leaves timer co
   let failures = 0;
   const ctx = { Date: class extends Date { static now() { return now; } }, Math, navigator: { language: "zh-CN" },
     console: { error() { failures++; } }, hindsight: { async call(method, { sql, params = [] } = {}) {
-      if (method === "notifications.send") return;
+      if (method === "notifications.send" || method.startsWith("island.")) return;
       if (method === "db.query") return rows.has(params[0]) ? [rows.get(params[0])] : [];
       if (method !== "db.execute") throw new Error(method);
       if (sql.startsWith("CREATE")) return { changes: 0 };
@@ -168,7 +168,7 @@ test("Store records while idle and paused; history write failure leaves timer co
     } } };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
-  for (const file of ["i18n.js", "core.js", "history.js", "store.js"]) vm.runInContext(fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), ctx);
+  for (const file of ["i18n.js", "core.js", "history.js", "island.js", "store.js"]) vm.runInContext(fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8"), ctx);
   await ctx.FocusStore.startHistory();
   let state = await ctx.FocusStore.apply({ type: "focus", at: now, event: { app: "Code", category } });
   assert.equal(state.phase, "idle");

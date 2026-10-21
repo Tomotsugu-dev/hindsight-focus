@@ -1,7 +1,7 @@
 {
   "id": "hindsight-focus",
   "name": "专注",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "permissions": [
     "stats.read",
     "stats.today",
@@ -11,7 +11,8 @@
     "focus.changed",
     "focus.app",
     "focus.category",
-    "notifications"
+    "notifications",
+    "island"
   ],
   "storage_mb": 1,
   "opens_in": "window",

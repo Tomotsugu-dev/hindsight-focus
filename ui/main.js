@@ -260,54 +260,14 @@
 
   const timeOf = (ms) => new Date(ms).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
 
-  /** What [from, to) of the block went to most, and when that was on the clock. null if the
-   * block has not got there yet */
-  function topOf(pieces, from, to) {
-    const totals = new Map();
-    let start = null;
-    let end = null;
-    for (const g of pieces) {
-      const a = Math.max(g.from, from);
-      const b = Math.min(g.to, to);
-      if (b <= a) continue;
-      start ??= g.start + (a - g.from);
-      end = g.start + (b - g.from);
-      const key = `${g.kind}:${g.color}:${g.name}`;
-      const entry = totals.get(key) ?? { kind: g.kind, name: g.name, color: C.safeColor(g.color), ms: 0 };
-      entry.ms += b - a;
-      totals.set(key, entry);
-    }
-    let top = null;
-    for (const entry of totals.values()) if (!top || entry.ms > top.ms) top = entry;
-    return top && { ...top, start, end };
-  }
-
-  /** The trail of the block, a cell for each of its minutes. Paused time is not in the block,
-   * so it is not in the trail either.
+  /** The trail of the block, a cell for each of its minutes, see FocusCore.trail.
    *
    * It runs every second, so the cells are changed in place: new ones would lose the hover */
   function renderTrail(view, now) {
     const minutes = settings.rhythm.workMinutes;
-    const list = [...view.segments];
-    if (view.runningSince !== null) {
-      list.push({
-        kind: view.runKind,
-        color: view.runColor,
-        name: view.runName,
-        start: view.runningSince,
-        ms: now - view.runningSince,
-      });
-    }
-    // Where each piece starts and ends, in ms from the start of the block
-    let at = 0;
-    const pieces = list.map((g) => {
-      const from = at;
-      at += Math.max(0, g.ms);
-      return { ...g, from, to: at };
-    });
-    cells = [];
-    for (let i = 0; i < minutes; i++) cells.push(topOf(pieces, i * C.MINUTE, (i + 1) * C.MINUTE));
-    const current = view.runningSince !== null ? Math.floor(at / C.MINUTE) : -1;
+    const trail = C.trail(view, now, minutes);
+    cells = trail.cells;
+    const { current } = trail;
 
     // A row starts with the minute it starts at. Built again only when the length changes
     const box = $("progress");
@@ -331,9 +291,9 @@
       else node.style.removeProperty("--c");
     });
 
-    $("activity-caption").textContent = pieces.length
-      ? I.format(T.ui.trailSince, { time: timeOf(pieces[0].start) })
-      : "";
+    $("activity-caption").textContent = trail.start === null
+      ? ""
+      : I.format(T.ui.trailSince, { time: timeOf(trail.start) });
     renderTip();
   }
 

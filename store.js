@@ -83,6 +83,24 @@
     for (const body of notes) await call("notifications.send", { body });
   }
 
+  // 这一边上次交给岛的内容：一样的就不再交
+  let lastIsland;
+
+  /** 把 `state` 放到岛上，不该放时撤下 */
+  async function showIsland(state, s, now) {
+    const content = FocusIsland.content(state, s, now, FocusI18n.pick(s.language));
+    const json = JSON.stringify(content);
+    if (json === lastIsland) return;
+    lastIsland = json;
+    try {
+      if (content) await call("island.show", content);
+      else await call("island.hide");
+    } catch (e) {
+      // 旧版 Hindsight 没有岛：计时和提醒照常。内容变了才再试，不每次都报错
+      console.error("focus island:", e);
+    }
+  }
+
   /** Runs one input through the rules, saves the state and sends the notifications. A focus
    * input carries the event, and its kind is found with the current settings */
   async function apply(input) {
@@ -102,6 +120,8 @@
                   superName: event.category.superCategory?.name ?? null,
                   // The color the page shows: the super-category's, or the category's if it has none
                   color: FocusCore.safeColor(event.category.superCategory?.color ?? event.category.color),
+                  // 岛上的图标，和颜色一样先用大类的
+                  icon: event.category.superCategory?.icon ?? event.category.icon ?? null,
                 }
               : null,
           }
@@ -117,6 +137,7 @@
       return { value: r.state, notes: r.notes };
     });
     await send(notes);
+    await showIsland(value, s, now);
     await historyJob;
     return value;
   }
@@ -135,5 +156,13 @@
     await send(notes);
   }
 
-  globalThis.FocusStore = { init, read, settings, saveSettings, history, startHistory, apply, checkGoals };
+  /** 下一个时限几点到，见 FocusCore.nextLimit。null：没有时限在走 */
+  async function nextLimit() {
+    const [s, { value }] = await Promise.all([settings(), read("state")]);
+    return value ? FocusCore.nextLimit(value, s.rhythm) : null;
+  }
+
+  globalThis.FocusStore = {
+    init, read, settings, saveSettings, history, startHistory, apply, checkGoals, nextLimit,
+  };
 })();

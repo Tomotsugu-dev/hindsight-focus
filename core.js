@@ -123,6 +123,76 @@
     return state.blockMs + running;
   }
 
+  /** What [from, to) of the block went to most, and when that was on the clock. null if the
+   * block has not got there yet */
+  function topOf(pieces, from, to) {
+    const totals = new Map();
+    let start = null;
+    let end = null;
+    for (const g of pieces) {
+      const a = Math.max(g.from, from);
+      const b = Math.min(g.to, to);
+      if (b <= a) continue;
+      start ??= g.start + (a - g.from);
+      end = g.start + (b - g.from);
+      const key = `${g.kind}:${g.color}:${g.name}`;
+      const entry = totals.get(key) ?? { kind: g.kind, name: g.name, color: safeColor(g.color), ms: 0 };
+      entry.ms += b - a;
+      totals.set(key, entry);
+    }
+    let top = null;
+    for (const entry of totals.values()) if (!top || entry.ms > top.ms) top = entry;
+    return top && { ...top, start, end };
+  }
+
+  /** 本段的轨迹：本段 `minutes` 分钟里每 `step` 分钟一格，每格是那段时间用得最多的（见 topOf），
+   * 还没到的是 null。`current` 是计时器正在走的那格，停着时是 -1；`start` 是本段从几点开始，
+   * 还没开始是 null。暂停的时间不算在本段里，轨迹里也没有 */
+  function trail(view, now, minutes, step = 1) {
+    const list = [...view.segments];
+    if (view.runningSince !== null) {
+      list.push({
+        kind: view.runKind,
+        color: view.runColor,
+        name: view.runName,
+        start: view.runningSince,
+        ms: now - view.runningSince,
+      });
+    }
+    // Where each piece starts and ends, in ms from the start of the block
+    let at = 0;
+    const pieces = list.map((g) => {
+      const from = at;
+      at += Math.max(0, g.ms);
+      return { ...g, from, to: at };
+    });
+    const size = step * MINUTE;
+    const cells = [];
+    for (let i = 0; i * step < minutes; i++) {
+      cells.push(topOf(pieces, i * size, Math.min((i + 1) * size, minutes * MINUTE)));
+    }
+    const current = view.runningSince !== null ? Math.floor(at / size) : -1;
+    return { cells, current, start: pieces[0]?.start ?? null };
+  }
+
+  /** 什么都不发生的话，下一个时限几点到：本段做完、摸鱼到时、休息结束、离开够久。null：没有时限
+   * 在走 */
+  function nextLimit(state, rhythm) {
+    const s = state;
+    const times = [];
+    if (s.phase === "working") {
+      if (s.runningSince !== null) {
+        times.push(s.runningSince + rhythm.workMinutes * MINUTE - s.blockMs);
+      }
+      if (s.slackSince !== null) times.push(s.slackSince + rhythm.slackMinutes * MINUTE);
+    }
+    if ((s.phase === "working" || s.phase === "slacking") && s.focus.kind === "away") {
+      times.push(s.focus.since + rhythm.restMinutes * MINUTE);
+    }
+    if (s.phase === "resting") times.push(s.phaseSince + rhythm.restMinutes * MINUTE);
+    return times.length ? Math.min(...times) : null;
+  }
+
   function startAt(s, at) {
     const c = s.focus.category;
     s.runningSince = at;
@@ -382,6 +452,8 @@
     newDay,
     today,
     elapsed,
+    trail,
+    nextLimit,
     step,
     checkGoals,
     goalLevel,
