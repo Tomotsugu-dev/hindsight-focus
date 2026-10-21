@@ -153,5 +153,9 @@
     };
   }
 
-  globalThis.FocusIsland = { content, fit, width };
+  /** 岛上该不该放东西：设置里开了「最小化到灵动岛」，并且插件窗口最小化了或者关着。`window` 是
+   * Hindsight 的 window.changed 说的："open"、"minimized" 或 "closed" */
+  const wanted = (settings, window) => settings.minimizeToIsland === true && window !== "open";
+
+  globalThis.FocusIsland = { content, fit, width, wanted };
 })();

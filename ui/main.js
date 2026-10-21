@@ -647,11 +647,25 @@
       },
       ["system", "light", "dark"].map((value) => el("option", { value, selected: value === look }, S[value])),
     );
+    const toIsland = el(
+      "select",
+      {
+        class: "select",
+        "data-focus": "minimize-to-island",
+        onchange: (e) => {
+          settings.minimizeToIsland = e.target.value === "on";
+          persist();
+        },
+      },
+      el("option", { value: "off", selected: !settings.minimizeToIsland }, S.islandOff),
+      el("option", { value: "on", selected: settings.minimizeToIsland === true }, S.islandOn),
+    );
     return section(
       S.interface,
       null,
       row(S.languageLabel, null, language),
       row(S.appearanceLabel, null, appearance),
+      row(S.minimizeToIsland, S.minimizeToIslandHint, toIsland),
     );
   }
 

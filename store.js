@@ -90,13 +90,26 @@
     return value?.date === FocusCore.localDate(now) ? value.items : null;
   }
 
+  /** 插件窗口现在的样子："open"、"minimized" 或 "closed"。后台按 Hindsight 的 window.changed 存，
+   * 两边交给岛的内容都看它 */
+  async function windowState() {
+    return (await read("window")).value ?? "closed";
+  }
+
+  function setWindow(state) {
+    return update("window", () => ({ value: state }));
+  }
+
   // 这一边上次交给岛的内容：一样的就不再交
   let lastIsland;
 
   /** 把 `state` 放到岛上，不该放时撤下 */
   async function showIsland(state, s, now) {
-    const items = await todayStats(now);
-    const content = FocusIsland.content(state, s, now, FocusI18n.pick(s.language), items);
+    const [items, window] = await Promise.all([todayStats(now), windowState()]);
+    const lang = FocusI18n.pick(s.language);
+    const content = FocusIsland.wanted(s, window)
+      ? FocusIsland.content(state, s, now, lang, items)
+      : null;
     const json = JSON.stringify(content);
     if (json === lastIsland) return;
     lastIsland = json;
@@ -176,5 +189,6 @@
 
   globalThis.FocusStore = {
     init, read, settings, saveSettings, history, startHistory, apply, checkGoals, nextLimit,
+    setWindow,
   };
 })();

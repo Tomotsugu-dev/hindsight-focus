@@ -11,6 +11,8 @@
     language: "system",
     // 页面的深浅色："system" 跟随系统，或者 "light"、"dark"
     appearance: "system",
+    // 窗口最小化或者关掉时，把计时放到 Hindsight 的岛上
+    minimizeToIsland: false,
     // Days of the week as in Date.getDay(): 0 is Sunday
     workdays: [1, 2, 3, 4, 5],
     goals: [

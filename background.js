@@ -39,6 +39,15 @@ hindsight.on("island.clicked", ({ button }) => {
   if (COMMANDS.includes(button)) run({ type: "command", name: button });
 });
 
+// 后台刚起来时插件窗口算关着：Hindsight 刚启动时没有窗口，打开窗口时它会发 window.changed
+later(() => FocusStore.setWindow("closed"));
+
+// 窗口打开、最小化、还原、关掉：存下来，再走一次规则，岛上跟着放或者撤
+hindsight.on("window.changed", ({ state }) => {
+  later(() => FocusStore.setWindow(state));
+  run({ type: "tick" });
+});
+
 let ticks = 0;
 setInterval(() => {
   run({ type: "tick" });

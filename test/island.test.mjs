@@ -207,6 +207,15 @@ test("每种语言的字都在岛的上限里，长应用名截断", () => {
   }
 });
 
+test("岛上放不放：默认不放；开了「最小化到灵动岛」，窗口最小化或者关着才放", () => {
+  assert.equal(defaults.minimizeToIsland, false);
+  for (const window of ["open", "minimized", "closed"]) assert.equal(F.wanted(defaults, window), false);
+  const on = { ...defaults, minimizeToIsland: true };
+  assert.equal(F.wanted(on, "open"), false);
+  assert.equal(F.wanted(on, "minimized"), true);
+  assert.equal(F.wanted(on, "closed"), true);
+});
+
 test("fit：去掉换行和控制字符，太长的截到上限并加省略号", () => {
   assert.equal(F.fit("a\nb\u0007c", 20), "abc");
   assert.equal(F.fit("abcdef", 5), "abc…");
