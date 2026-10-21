@@ -9,6 +9,8 @@
   const DEFAULT_SETTINGS = {
     // "system", or one of FocusI18n.LOCALES
     language: "system",
+    // 页面的深浅色："system" 跟随系统，或者 "light"、"dark"
+    appearance: "system",
     // Days of the week as in Date.getDay(): 0 is Sunday
     workdays: [1, 2, 3, 4, 5],
     goals: [

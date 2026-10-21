@@ -123,6 +123,17 @@
   const kindOf = (target) => (target.type === "super" ? T.kind.super : T.kind.category);
   const unitWord = (template) => template.replace("{n}", "").trim();
 
+  // 系统是不是深色。跟随系统时，系统一换，页面跟着换
+  const systemDark = matchMedia("(prefers-color-scheme: dark)");
+  systemDark.addEventListener("change", () => applyAppearance());
+
+  /** 按设置里的外观给页面换深浅色，见 style.css 的 [data-theme="dark"]。读到设置之前跟随系统 */
+  function applyAppearance() {
+    const look = settings?.appearance;
+    const dark = look === "dark" || (look !== "light" && systemDark.matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }
+
   /** Puts the text that is not re-rendered in the language chosen in the settings */
   function applyLanguage() {
     lang = I.pick(settings?.language);
@@ -603,9 +614,10 @@
     return el("button", { type: "button", class: "icon-button", "aria-label": label, title: label, onclick }, icon(name));
   }
 
-  function languageSection() {
+  /** 「界面」一节：界面语言和界面外观 */
+  function interfaceSection() {
     const choice = settings.language ?? "system";
-    const select = el(
+    const language = el(
       "select",
       {
         class: "select",
@@ -621,7 +633,26 @@
         el("option", { value, selected: value === choice }, value === "system" ? S.system : I.NAMES[value]),
       ),
     );
-    return section(S.language, null, row(S.languageLabel, null, select));
+    const look = settings.appearance ?? "system";
+    const appearance = el(
+      "select",
+      {
+        class: "select",
+        "data-focus": "appearance",
+        onchange: (e) => {
+          settings.appearance = e.target.value;
+          applyAppearance();
+          persist();
+        },
+      },
+      ["system", "light", "dark"].map((value) => el("option", { value, selected: value === look }, S[value])),
+    );
+    return section(
+      S.interface,
+      null,
+      row(S.languageLabel, null, language),
+      row(S.appearanceLabel, null, appearance),
+    );
   }
 
   function workdaysSection() {
@@ -807,7 +838,7 @@
       categoriesSection(),
       workdaysSection(),
       goalsSection(),
-      languageSection(),
+      interfaceSection(),
     );
     if (restore) [...box.querySelectorAll("[data-focus]")].find((node) => node.dataset.focus === restore)?.focus({ preventScroll: !focusKey });
   }
@@ -833,6 +864,7 @@
   }
   async function start() {
     FocusReview.init();
+    applyAppearance();
     applyLanguage();
     watchTabs();
     $("goals-edit").addEventListener("click", openGoals);
@@ -840,6 +872,7 @@
     watchBar();
     try {
       settings = await FocusStore.settings();
+      applyAppearance();
       applyLanguage();
       [categories, supers] = await Promise.all([
         hindsight.call("categories.list"),

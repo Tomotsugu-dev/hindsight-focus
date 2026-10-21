@@ -407,6 +407,13 @@ test("一天的目标结果", () => {
   assert.equal(C.dayResult([], items(360, 30)), null);
 });
 
+test("外观默认跟随系统，以前存的设置里没有这一项也是", () => {
+  assert.equal(defaults.appearance, "system");
+  const saved = C.withDefaults({ language: "en", workdays: [1, 2, 3] });
+  assert.equal(saved.appearance, "system");
+  assert.equal(C.withDefaults({ appearance: "dark" }).appearance, "dark");
+});
+
 test("改返回的设置不会改到默认值", () => {
   const s = C.withDefaults(null);
   s.workdays.push(6);
