@@ -4,8 +4,11 @@
   const C = globalThis.FocusCore;
   const I = globalThis.FocusI18n;
 
-  // 没有分类颜色时用的颜色，和页面深色主题里的一样
-  const COLORS = { work: "#a092fb", slack: "#ee939c", neutral: "#918d9f", rest: "#76c79f" };
+  // 轨迹里没有分类颜色的格子用的颜色，和页面深色主题里的一样
+  const COLORS = { work: "#a092fb", slack: "#ee939c", neutral: "#918d9f" };
+  // 计时器在走是绿的，停着是灰的
+  const RUNNING = "#34d399";
+  const STOPPED = "#918d9f";
   // 岛上小字最多 20 宽，见 Hindsight 的 docs/design/plugins/island.md
   const SMALL = 20;
   // 每行最多 20 格，最多 3 行
@@ -47,17 +50,17 @@
   const iso = (ms) => new Date(ms).toISOString();
 
   /** 计时器：本段还剩多少，休息时是休息还剩多少 */
-  function timer(s, rhythm, color) {
+  function timer(s, rhythm) {
     if (s.phase === "resting") {
       const start = s.phaseSince;
       const end = start + rhythm.restMinutes * C.MINUTE;
-      return { type: "timer", start: iso(start), end: iso(end), color: COLORS.rest };
+      return { type: "timer", start: iso(start), end: iso(end), color: RUNNING };
     }
     const total = rhythm.workMinutes * C.MINUTE;
     const done = Math.min(s.blockMs, total);
     if (s.runningSince !== null) {
       const start = s.runningSince - done;
-      return { type: "timer", start: iso(start), end: iso(start + total), color };
+      return { type: "timer", start: iso(start), end: iso(start + total), color: RUNNING };
     }
     // 停在最后一次计时停下的那一刻：停着的时候内容不变，不用每次都重画
     const last = s.segments.at(-1);
@@ -68,7 +71,7 @@
       start: iso(start),
       end: iso(start + total),
       pausedAt: iso(stopped),
-      color,
+      color: STOPPED,
     };
   }
 
@@ -92,19 +95,13 @@
     if (!s || !SHOWN.includes(s.phase)) return null;
     const T = I.text(lang);
     const { rhythm } = settings;
-    const category = s.focus.category;
-    const focusColor = C.safeColor(category?.color) ?? COLORS[s.focus.kind] ?? COLORS.neutral;
-    const running = s.runningSince !== null;
 
-    let icon = { type: "icon", name: iconName(category?.icon) ?? "Clock", color: focusColor };
-    if (s.phase === "resting") icon = { type: "icon", name: "Coffee", color: COLORS.rest };
-    if (s.phase === "paused") icon = { type: "icon", name: "Pause", color: COLORS.neutral };
-    // 停着的计时器是灰的，摸鱼停下的是红的
-    const time = timer(
-      s,
-      rhythm,
-      s.phase === "slacking" ? COLORS.slack : running ? focusColor : COLORS.neutral,
-    );
+    // 图标不给颜色：岛把它画成白的。没有小类（离开了、看不到的窗口）时是时钟
+    let name = iconName(s.focus.category?.icon) ?? "Clock";
+    if (s.phase === "resting") name = "Coffee";
+    if (s.phase === "paused") name = "Pause";
+    const icon = { type: "icon", name };
+    const time = timer(s, rhythm);
 
     const phase = fit(T.phase[s.phase], SMALL);
     const line = [{ text: phase, bold: true }];

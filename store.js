@@ -120,8 +120,8 @@
                   superName: event.category.superCategory?.name ?? null,
                   // The color the page shows: the super-category's, or the category's if it has none
                   color: FocusCore.safeColor(event.category.superCategory?.color ?? event.category.color),
-                  // 岛上的图标，和颜色一样先用大类的
-                  icon: event.category.superCategory?.icon ?? event.category.icon ?? null,
+                  // 岛上的图标：小类自己的，编程就是编程的图标
+                  icon: event.category.icon ?? null,
                 }
               : null,
           }

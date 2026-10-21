@@ -46,12 +46,14 @@ test("还没开始、等下一段的时候岛上不放东西", () => {
   assert.equal(island(waiting, at(10, 1)), null);
 });
 
-test("计时时：左边是分类的图标，右边倒数本段，展开有暂停按钮", () => {
+test("计时时：左边是小类的白色图标，右边绿色倒数本段，展开有暂停按钮", () => {
   const d = day();
   d.focus(at(9, 0), "work", { app: "Code", category: code });
   const s = d.start(at(9, 0));
   const c = island(s, at(9, 10));
-  assert.deepEqual(c.closed.left, { type: "icon", name: "Code", color: "#a78bfa" });
+  // 不给颜色，岛就画成白的
+  assert.deepEqual(c.closed.left, { type: "icon", name: "Code" });
+  assert.equal(c.closed.right.color, "#34d399");
   assert.equal(c.closed.right.start, new Date(at(9, 0)).toISOString());
   assert.equal(c.closed.right.end, new Date(at(9, 45)).toISOString());
   assert.equal(c.closed.right.pausedAt, undefined);
@@ -99,7 +101,8 @@ test("暂停时是继续按钮，休息时没有按钮、倒数休息", () => {
   d.focus(at(9, 0), "work", { app: "Code", category: code });
   d.start(at(9, 0));
   const paused = island(d.pause(at(9, 5)), at(9, 6));
-  assert.equal(paused.closed.left.name, "Pause");
+  assert.deepEqual(paused.closed.left, { type: "icon", name: "Pause" });
+  assert.equal(paused.closed.right.color, "#918d9f");
   assert.deepEqual(paused.open.right[1], { type: "button", id: "resume", icon: "Play" });
 
   const d2 = day();
@@ -107,7 +110,8 @@ test("暂停时是继续按钮，休息时没有按钮、倒数休息", () => {
   d2.start(at(9, 0));
   const resting = d2.tick(at(9, 46));
   const c = island(resting, at(9, 50));
-  assert.equal(c.closed.left.name, "Coffee");
+  assert.deepEqual(c.closed.left, { type: "icon", name: "Coffee" });
+  assert.equal(c.closed.right.color, "#34d399");
   assert.equal(c.closed.right.start, new Date(at(9, 45)).toISOString());
   assert.equal(c.closed.right.end, new Date(at(10, 0)).toISOString());
   assert.equal(c.open.right.length, 1);
@@ -132,6 +136,15 @@ test("轨迹：一分钟一格，超过 60 分钟时一格几分钟，行数不�
     assert.ok(c.columns <= 20 && Math.ceil(c.colors.length / c.columns) <= 3, `${minutes}`);
     assert.ok(c.current === null || c.current < c.colors.length, `${minutes}`);
   }
+});
+
+test("没有小类时是时钟图标", () => {
+  const d = day();
+  d.focus(at(9, 0), "work", { app: "Code", category: code });
+  d.start(at(9, 0));
+  // 看不到的窗口没有应用、没有小类，计时照走
+  const s = d.focus(at(9, 5), "work");
+  assert.deepEqual(island(s, at(9, 6)).closed.left, { type: "icon", name: "Clock" });
 });
 
 test("每种语言的字都在岛的上限里，长应用名截断", () => {
