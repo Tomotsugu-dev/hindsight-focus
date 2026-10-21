@@ -83,12 +83,20 @@
     for (const body of notes) await call("notifications.send", { body });
   }
 
+  /** checkGoals 存下的今天的统计：后台和页面交给岛的今日目标都从这里算，两边才一样。不是今天的
+   * 返回 null */
+  async function todayStats(now) {
+    const { value } = await read("stats");
+    return value?.date === FocusCore.localDate(now) ? value.items : null;
+  }
+
   // 这一边上次交给岛的内容：一样的就不再交
   let lastIsland;
 
   /** 把 `state` 放到岛上，不该放时撤下 */
   async function showIsland(state, s, now) {
-    const content = FocusIsland.content(state, s, now, FocusI18n.pick(s.language));
+    const items = await todayStats(now);
+    const content = FocusIsland.content(state, s, now, FocusI18n.pick(s.language), items);
     const json = JSON.stringify(content);
     if (json === lastIsland) return;
     lastIsland = json;
@@ -142,18 +150,22 @@
     return value;
   }
 
-  /** Reads today's statistics and sends the goal notifications that are due */
+  /** Reads today's statistics and sends the goal notifications that are due. 岛上的今日目标也跟着
+   * 更新 */
   async function checkGoals() {
     const s = await settings();
     const now = Date.now();
     if (!FocusCore.isWorkday(s, now)) return;
-    const items = await call("stats.day_by_category", { date: FocusCore.localDate(now) });
+    const date = FocusCore.localDate(now);
+    const items = await call("stats.day_by_category", { date });
+    await update("stats", () => ({ value: { date, items } }));
     const lang = FocusI18n.pick(s.language);
-    const { notes } = await update("state", (prev) => {
+    const { value, notes } = await update("state", (prev) => {
       const r = FocusCore.checkGoals(prev, s, items, now, lang);
       return { value: r.state, notes: r.notes };
     });
     await send(notes);
+    await showIsland(value, s, now);
   }
 
   /** 下一个时限几点到，见 FocusCore.nextLimit。null：没有时限在走 */

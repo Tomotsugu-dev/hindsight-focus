@@ -89,6 +89,8 @@
       phaseSince: now,
       // Blocks finished today
       rounds: 0,
+      // 今天计时中开始了几段摸鱼，见 slackOn
+      distractions: 0,
       // `seen` stays false until the first focus event: the page then says it does not know yet
       focus: focus ?? { kind: "neutral", since: now, seen: false },
       // The goal notifications already sent today
@@ -105,6 +107,8 @@
     s.runKind ??= s.runningSince === null ? null : s.focus.kind;
     s.runColor ??= null;
     s.runName ??= null;
+    // 0.1.25 及以前存的没有
+    s.distractions ??= 0;
     return s;
   }
 
@@ -249,12 +253,23 @@
     s.segments = [];
   }
 
+  /** 计时中焦点换成 `kind`：从不摸鱼换到摸鱼，是新的一段摸鱼，分心多一次。从一个摸鱼的应用换到
+   * 另一个还是同一段 */
+  function slackOn(s, kind, at) {
+    if (kind !== "slack") {
+      s.slackSince = null;
+    } else if (s.slackSince === null) {
+      s.slackSince = at;
+      s.distractions += 1;
+    }
+  }
+
   function work(s, rhythm, at, isNewBlock) {
     s.phase = "working";
     s.phaseSince = at;
     if (isNewBlock) newBlock(s);
     if (runs(s.focus.kind, rhythm)) startAt(s, at);
-    s.slackSince = s.focus.kind === "slack" ? at : null;
+    slackOn(s, s.focus.kind, at);
   }
 
   function wait(s, rhythm, at) {
@@ -313,8 +328,7 @@
       // A new segment for each focus, so the progress bar shows what the time went to
       stopAt(s, at);
       if (runs(kind, rhythm)) startAt(s, at);
-      // Going from one slacking app to another is still the same stretch
-      s.slackSince = kind === "slack" ? (s.slackSince ?? at) : null;
+      slackOn(s, kind, at);
     } else if (s.phase === "slacking") {
       if (kind === "work") work(s, rhythm, at, false);
     } else if (s.phase === "waiting") {

@@ -97,7 +97,8 @@
       pause: "暂停",
       resume: "继续",
       rounds: "今天完成 {n} 段",
-      islandRounds: "今天完成 {n} 段",
+      islandGoal: "今日目标",
+      islandDistractions: "分心 {n} 次",
       goals: {
         title: "今天的目标",
         empty: "还没有目标，在「设置」里添加。",
@@ -215,7 +216,8 @@
       pause: "暫停",
       resume: "繼續",
       rounds: "今天完成 {n} 段",
-      islandRounds: "今天完成 {n} 段",
+      islandGoal: "今日目標",
+      islandDistractions: "分心 {n} 次",
       goals: {
         title: "今天的目標",
         empty: "還沒有目標，在「設定」裡新增。",
@@ -333,7 +335,8 @@
       pause: "Pause",
       resume: "Resume",
       rounds: "Blocks done today: {n}",
-      islandRounds: "{n} blocks today",
+      islandGoal: "Daily goal",
+      islandDistractions: "Distractions: {n}",
       goals: {
         title: "Today's goals",
         empty: "No goals yet. Add them in Settings.",
@@ -451,7 +454,8 @@
       pause: "一時停止",
       resume: "再開",
       rounds: "今日の完了セッション：{n}",
-      islandRounds: "今日 {n} セッション",
+      islandGoal: "今日の目標",
+      islandDistractions: "脱線 {n} 回",
       goals: {
         title: "今日の目標",
         empty: "まだ目標がありません。「設定」で追加できます。",
@@ -569,7 +573,8 @@
       pause: "Pausar",
       resume: "Retomar",
       rounds: "Blocos concluídos hoje: {n}",
-      islandRounds: "{n} blocos hoje",
+      islandGoal: "Meta",
+      islandDistractions: "Distrações: {n}",
       goals: {
         title: "Metas de hoje",
         empty: "Nenhuma meta ainda. Adicione em Configurações.",
@@ -687,7 +692,8 @@
       pause: "Pausar",
       resume: "Reanudar",
       rounds: "Bloques completados hoy: {n}",
-      islandRounds: "{n} bloques hoy",
+      islandGoal: "Objetivo",
+      islandDistractions: "Distracciones: {n}",
       goals: {
         title: "Objetivos de hoy",
         empty: "Aún no hay objetivos. Añádelos en Ajustes.",

@@ -1,5 +1,5 @@
-// 专注插件放在 Hindsight 岛上的内容：本段或者休息的计时器。只从状态和设置算出来，后台脚本、页面和
-// 测试算出的内容一样。要先加载 i18n.js 和 core.js。
+// 专注插件放在 Hindsight 岛上的内容：本段或者休息的计时器。只从状态、设置和今天的统计算出来，
+// 后台脚本、页面和测试算出的内容一样。要先加载 i18n.js 和 core.js。
 (() => {
   const C = globalThis.FocusCore;
   const I = globalThis.FocusI18n;
@@ -88,9 +88,36 @@
     };
   }
 
+  /** 90 分钟 → "1:30" */
+  const clock = (minutes) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
+
+  /** 第一个「至少」目标今天到了多少，比如「今日目标 2:40/6:00」。没有这种目标、还没拿到统计时
+   * 返回 null */
+  function goal(settings, items, T) {
+    const g = settings.goals.find((g) => g.rule === "atLeast");
+    if (!g || !items) return null;
+    const done = clock(Math.floor(C.totalSeconds(items, g.target) / 60));
+    const total = `/${clock(g.minutes)}`;
+    const label = fit(T.islandGoal, SMALL - width(done + total) - 1);
+    return {
+      type: "text",
+      text: [{ text: `${label} ` }, { text: done, bold: true }, { text: total, dim: true }],
+    };
+  }
+
+  /** 「分心 3 次」，次数用摸鱼的颜色加粗 */
+  function distractions(s, T) {
+    const [before, after] = T.islandDistractions.split("{n}");
+    const n = { text: String(s.distractions), color: COLORS.slack, bold: true };
+    // 岛不收空字
+    const text = [{ text: before }, n, { text: after }].filter((run) => run.text !== "");
+    return { type: "text", text };
+  }
+
   /** `state` 在 `now` 时岛上放什么；不放东西时返回 null：还没开始、等下一段、不是工作日。
-   * `state` 是 FocusCore.step 算出的今天的状态 */
-  function content(state, settings, now, lang) {
+   * `state` 是 FocusCore.step 算出的今天的状态，`items` 是今天的 stats.day_by_category，还没拿到
+   * 是 null */
+  function content(state, settings, now, lang, items = null) {
     const s = state;
     if (!s || !SHOWN.includes(s.phase)) return null;
     const T = I.text(lang);
@@ -114,12 +141,14 @@
     if (s.phase === "paused") right.push({ type: "button", id: "resume", icon: "Play" });
     else if (s.phase !== "resting") right.push({ type: "button", id: "pause", icon: "Pause" });
 
+    const target = goal(settings, items, T);
     return {
       closed: { left: icon, right: time },
       open: {
-        topRight: { type: "text", text: fit(I.format(T.islandRounds, { n: s.rounds }), SMALL) },
-        left: [{ type: "text", text: line }, cells(s, rhythm, now)],
+        topRight: { type: "text", text: line },
+        left: target ? [target, cells(s, rhythm, now)] : [cells(s, rhythm, now)],
         right,
+        bottomRight: distractions(s, T),
       },
     };
   }

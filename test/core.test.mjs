@@ -121,6 +121,25 @@ test("从一个摸鱼应用切到另一个，还是同一段摸鱼", () => {
   assert.equal(d.tick(at(9, 15)).phase, "slacking");
 });
 
+test("分心次数：计时中每开始一段摸鱼算一次；换摸鱼应用、没在计时都不算；过了 0 点从 0 数", () => {
+  const d = day();
+  d.focus(at(8, 50), "slack");
+  assert.equal(d.tick(at(8, 55)).distractions, 0);
+  d.focus(at(8, 55), "work");
+  d.start(at(9, 0));
+  d.focus(at(9, 10), "slack");
+  assert.equal(d.focus(at(9, 11), "slack").distractions, 1);
+  d.focus(at(9, 12), "work");
+  assert.equal(d.focus(at(9, 20), "slack").distractions, 2);
+  // 摸鱼满 5 分钟计时停下，再换摸鱼应用不算
+  assert.equal(d.tick(at(9, 25)).phase, "slacking");
+  assert.equal(d.focus(at(9, 26), "slack").distractions, 2);
+  d.focus(at(9, 30), "work");
+  d.pause(at(9, 31));
+  assert.equal(d.focus(at(9, 32), "slack").distractions, 2);
+  assert.equal(d.tick(at(0, 5, 22)).distractions, 0);
+});
+
 test("手动暂停：计时停住，切到工作也不会自己继续；点继续才接着走", () => {
   const d = day();
   d.focus(at(8, 55), "work");

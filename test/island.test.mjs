@@ -58,11 +58,45 @@ test("计时时：左边是小类的白色图标，右边绿色倒数本段，�
   assert.equal(c.closed.right.end, new Date(at(9, 45)).toISOString());
   assert.equal(c.closed.right.pausedAt, undefined);
   assert.deepEqual(c.open.right[1], { type: "button", id: "pause", icon: "Pause" });
-  assert.deepEqual(c.open.topRight.text, "今天完成 0 段");
-  assert.deepEqual(c.open.left[0].text, [
+  assert.deepEqual(c.open.topRight.text, [
     { text: "工作中", bold: true },
     { text: " · Code", dim: true },
   ]);
+  assert.deepEqual(c.open.bottomRight.text, [
+    { text: "分心 " },
+    { text: "0", color: "#ee939c", bold: true },
+    { text: " 次" },
+  ]);
+  // 还没拿到统计：没有今日目标那一行，只有轨迹
+  assert.deepEqual(c.open.left.map((x) => x.type), ["cells"]);
+});
+
+test("今日目标：第一个「至少」目标今天到了多少；没有这种目标就不放", () => {
+  const d = day();
+  d.focus(at(9, 0), "work", { app: "Code", category: code });
+  const s = d.start(at(9, 0));
+  const items = [
+    { id: "code", seconds: 160 * 60 + 59, superCategory: { id: "work" } },
+    { id: "video", seconds: 30 * 60, superCategory: { id: "play" } },
+  ];
+  const c = F.content(s, defaults, at(9, 10), "zh-CN", items);
+  assert.deepEqual(c.open.left[0].text, [
+    { text: "今日目标 " },
+    { text: "2:40", bold: true },
+    { text: "/6:00", dim: true },
+  ]);
+  assert.equal(c.open.left[1].type, "cells");
+  const atMostOnly = { ...defaults, goals: defaults.goals.filter((g) => g.rule === "atMost") };
+  assert.equal(F.content(s, atMostOnly, at(9, 10), "zh-CN", items).open.left.length, 1);
+});
+
+test("分心次数跟着状态走，和计时用的同一份", () => {
+  const d = day();
+  d.focus(at(9, 0), "work", { app: "Code", category: code });
+  d.start(at(9, 0));
+  d.focus(at(9, 5), "slack", { app: "Video" });
+  const s = d.focus(at(9, 6), "work", { app: "Code", category: code });
+  assert.equal(island(s, at(9, 7)).open.bottomRight.text[1].text, "1");
 });
 
 test("计时器自己倒数：同一个状态过了几秒，内容不变，不用重交", () => {
@@ -115,7 +149,7 @@ test("暂停时是继续按钮，休息时没有按钮、倒数休息", () => {
   assert.equal(c.closed.right.start, new Date(at(9, 45)).toISOString());
   assert.equal(c.closed.right.end, new Date(at(10, 0)).toISOString());
   assert.equal(c.open.right.length, 1);
-  assert.equal(c.open.topRight.text, "今天完成 1 段");
+  assert.deepEqual(c.open.topRight.text, [{ text: "休息中", bold: true }]);
 });
 
 test("轨迹：一分钟一格，超过 60 分钟时一格几分钟，行数不超过 3", () => {
@@ -124,7 +158,7 @@ test("轨迹：一分钟一格，超过 60 分钟时一格几分钟，行数不�
   const s = d.start(at(9, 0));
   const cells = (minutes) =>
     island(s, at(9, 10, 30), { ...defaults, rhythm: { ...defaults.rhythm, workMinutes: minutes } })
-      .open.left[1];
+      .open.left.at(-1);
   const c45 = cells(45);
   assert.equal(c45.colors.length, 45);
   assert.equal(c45.columns, 15);
@@ -152,12 +186,18 @@ test("每种语言的字都在岛的上限里，长应用名截断", () => {
   const long = "A Very Long Application Name That Goes On";
   d.focus(at(9, 0), "slack", { app: long, category: code });
   d.start(at(9, 0));
+  // 最宽的今日目标：做了 23:59，目标 24:00；分心次数三位数
+  const goals = [{ target: { type: "super", id: "work" }, rule: "atLeast", minutes: 24 * 60 }];
+  const items = [{ id: "code", seconds: (24 * 60 - 1) * 60, superCategory: { id: "work" } }];
+  const joined = (text) => text.text.map((r) => r.text).join("");
   for (const s of [d.tick(at(9, 1)), d.tick(at(9, 7)), d.pause(at(9, 8))]) {
+    s.distractions = 999;
     for (const lang of I.LOCALES) {
-      const c = island(s, at(9, 9), defaults, lang);
-      const line = c.open.left[0].text.map((r) => r.text).join("");
-      assert.ok(F.width(line) <= 20, `${lang} ${s.phase} ${line}`);
-      assert.ok(F.width(c.open.topRight.text) <= 20, `${lang} ${c.open.topRight.text}`);
+      const c = F.content(s, { ...defaults, goals }, at(9, 9), lang, items);
+      for (const text of [c.open.topRight, c.open.left[0], c.open.bottomRight]) {
+        assert.ok(F.width(joined(text)) <= 20, `${lang} ${s.phase} ${joined(text)}`);
+        assert.ok(text.text.every((r) => r.text !== ""), `${lang} 有空的一段`);
+      }
     }
   }
 });
