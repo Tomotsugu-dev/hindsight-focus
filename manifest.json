@@ -1,0 +1,23 @@
+{
+  "id": "hindsight-focus",
+  "name": "专注",
+  "version": "0.1.23",
+  "permissions": [
+    "stats.read",
+    "stats.today",
+    "stats.month",
+    "categories.read",
+    "super_categories.read",
+    "focus.changed",
+    "focus.app",
+    "focus.category",
+    "notifications"
+  ],
+  "storage_mb": 1,
+  "opens_in": "window",
+  "window": {
+    "width": 440,
+    "height": 720
+  },
+  "runs_in_background": true
+}

@@ -1,0 +1,395 @@
+// The rules of the Focus plugin: the daily goals and the work rhythm. Nothing here calls
+// Hindsight, so the background script, the page and the tests all use the same rules. Needs
+// i18n.js loaded first.
+(() => {
+  const I18n = globalThis.FocusI18n;
+  const MINUTE = 60 * 1000;
+
+  /** Settings for a new install. A target is a category or a super-category, by id */
+  const DEFAULT_SETTINGS = {
+    // "system", or one of FocusI18n.LOCALES
+    language: "system",
+    // Days of the week as in Date.getDay(): 0 is Sunday
+    workdays: [1, 2, 3, 4, 5],
+    goals: [
+      { target: { type: "super", id: "work" }, rule: "atLeast", minutes: 360 },
+      { target: { type: "super", id: "play" }, rule: "atMost", minutes: 120 },
+    ],
+    rhythm: {
+      workMinutes: 45,
+      restMinutes: 15,
+      slackMinutes: 5,
+      work: [{ type: "super", id: "work" }],
+      slack: [{ type: "super", id: "play" }],
+      // In a category that is neither work nor slacking, the timer goes on ("keep") or stops
+      // ("pause")
+      neutral: "keep",
+    },
+  };
+
+  const clone = (value) => JSON.parse(JSON.stringify(value));
+
+  /** Fills in what saved settings lack, such as a field added by a newer version */
+  function withDefaults(saved) {
+    const s = saved ?? {};
+    return clone({
+      ...DEFAULT_SETTINGS,
+      ...s,
+      rhythm: { ...DEFAULT_SETTINGS.rhythm, ...(s.rhythm ?? {}) },
+    });
+  }
+
+  /** The local date of `ms`, as "YYYY-MM-DD" */
+  function localDate(ms) {
+    const d = new Date(ms);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function isWorkday(settings, ms) {
+    return settings.workdays.includes(new Date(ms).getDay());
+  }
+
+  /** Whether a category, from a focus event or from the statistics, is one of `targets` */
+  function matches(targets, category) {
+    if (!category) return false;
+    return targets.some((t) =>
+      t.type === "category" ? t.id === category.id : t.id === category.superCategory?.id,
+    );
+  }
+
+  /** What a focus.changed event is for the rhythm: "work", "slack", "neutral" or "away". A window
+   * that the statistics do not show comes without a category, so it is neutral */
+  function kindOf(event, settings) {
+    if (event.away) return "away";
+    if (matches(settings.rhythm.work, event.category)) return "work";
+    if (matches(settings.rhythm.slack, event.category)) return "slack";
+    return "neutral";
+  }
+
+  /** The state at the start of a day. `focus` is the last focus seen: it is still in front */
+  function newDay(now, focus) {
+    return {
+      date: localDate(now),
+      // "idle", "working", "paused", "slacking", "resting" or "waiting"
+      phase: "idle",
+      // Work time in this block, counted up to `runningSince`
+      blockMs: 0,
+      // What the counted time in this block was spent on, for the progress bar: { kind, color,
+      // name, start, ms }, oldest first. Their ms add up to blockMs
+      segments: [],
+      // When the timer last started; null while it is stopped
+      runningSince: null,
+      // The focus kind since runningSince, and the color and name of its category
+      runKind: null,
+      runColor: null,
+      runName: null,
+      // When the current stretch of slacking began; null when not slacking
+      slackSince: null,
+      phaseSince: now,
+      // Blocks finished today
+      rounds: 0,
+      // `seen` stays false until the first focus event: the page then says it does not know yet
+      focus: focus ?? { kind: "neutral", since: now, seen: false },
+      // The goal notifications already sent today
+      notified: {},
+    };
+  }
+
+  /** Today's state: a state from an earlier day starts over */
+  function today(state, now) {
+    if (!state || state.date !== localDate(now)) return newDay(now, state?.focus);
+    const s = clone(state);
+    // Saved by version 0.1.3 or earlier, which kept no segments
+    s.segments ??= [];
+    s.runKind ??= s.runningSince === null ? null : s.focus.kind;
+    s.runColor ??= null;
+    s.runName ??= null;
+    return s;
+  }
+
+  /** `value` if it is a color as Hindsight gives it, "#rrggbb"; otherwise null. The page puts it
+   * into CSS, so nothing else may get through */
+  function safeColor(value) {
+    return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : null;
+  }
+
+  const runs = (kind, rhythm) =>
+    kind === "work" || kind === "slack" || (kind === "neutral" && rhythm.neutral === "keep");
+
+  /** The work time in this block at `now` */
+  function elapsed(state, now) {
+    const running = state.runningSince === null ? 0 : Math.max(0, now - state.runningSince);
+    return state.blockMs + running;
+  }
+
+  function startAt(s, at) {
+    const c = s.focus.category;
+    s.runningSince = at;
+    s.runKind = s.focus.kind;
+    s.runColor = c?.color ?? null;
+    // The same name as the page's tag for the focus
+    s.runName = c ? (c.superName ?? c.name) : null;
+  }
+
+  function clearRun(s) {
+    s.runningSince = null;
+    s.runKind = null;
+    s.runColor = null;
+    s.runName = null;
+  }
+
+  /** Stops the timer at `at`, and adds the time since it started to the block */
+  function stopAt(s, at) {
+    if (s.runningSince === null) return;
+    const ms = Math.max(0, at - s.runningSince);
+    s.blockMs += ms;
+    const last = s.segments.at(-1);
+    // Joined with the segment before when it goes on from it, so the list stays short
+    const goesOn =
+      last &&
+      last.kind === s.runKind &&
+      (last.color ?? null) === s.runColor &&
+      (last.name ?? null) === s.runName &&
+      last.start + last.ms === s.runningSince;
+    if (goesOn) last.ms += ms;
+    else if (ms > 0) {
+      s.segments.push({
+        kind: s.runKind,
+        color: s.runColor,
+        name: s.runName,
+        start: s.runningSince,
+        ms,
+      });
+    }
+    clearRun(s);
+  }
+
+  /** Stops the timer, and takes the time from `from` on out of the block */
+  function dropFrom(s, from) {
+    if (s.runningSince !== null && s.runningSince < from) stopAt(s, from);
+    clearRun(s);
+    const dropped = s.segments.filter((g) => g.start >= from);
+    s.segments = s.segments.filter((g) => g.start < from);
+    s.blockMs -= dropped.reduce((sum, g) => sum + g.ms, 0);
+  }
+
+  function newBlock(s) {
+    s.blockMs = 0;
+    s.segments = [];
+  }
+
+  function work(s, rhythm, at, isNewBlock) {
+    s.phase = "working";
+    s.phaseSince = at;
+    if (isNewBlock) newBlock(s);
+    if (runs(s.focus.kind, rhythm)) startAt(s, at);
+    s.slackSince = s.focus.kind === "slack" ? at : null;
+  }
+
+  function wait(s, rhythm, at) {
+    s.phase = "waiting";
+    s.phaseSince = at;
+    newBlock(s);
+    clearRun(s);
+    s.slackSince = null;
+    // Already at work when the rest ends: the next block starts now
+    if (s.focus.kind === "work") work(s, rhythm, at, true);
+  }
+
+  /** Moves on if a time limit has passed by `t`. `say` collects the notifications */
+  function checkTime(s, rhythm, t, say) {
+    const rest = rhythm.restMinutes * MINUTE;
+    const awayForRest = s.focus.kind === "away" && t - s.focus.since >= rest;
+    if (s.phase === "working") {
+      if (awayForRest) {
+        wait(s, rhythm, s.focus.since + rest);
+        return;
+      }
+      if (s.slackSince !== null && t - s.slackSince >= rhythm.slackMinutes * MINUTE) {
+        // The slacking time does not count as work
+        dropFrom(s, s.slackSince);
+        s.slackSince = null;
+        s.phase = "slacking";
+        s.phaseSince = t;
+        say("slack", { minutes: rhythm.slackMinutes });
+        return;
+      }
+      const over = elapsed(s, t) - rhythm.workMinutes * MINUTE;
+      if (over >= 0) {
+        const doneAt = t - over;
+        stopAt(s, doneAt);
+        s.slackSince = null;
+        s.phase = "resting";
+        s.phaseSince = doneAt;
+        s.rounds += 1;
+        say("rest", { work: rhythm.workMinutes, rest: rhythm.restMinutes });
+      }
+    } else if (s.phase === "slacking") {
+      if (awayForRest) wait(s, rhythm, s.focus.since + rest);
+    } else if (s.phase === "resting") {
+      if (t - s.phaseSince >= rest) {
+        wait(s, rhythm, s.phaseSince + rest);
+        say("restOver", {});
+      }
+    }
+  }
+
+  function onFocus(s, rhythm, input) {
+    const { at, kind } = input;
+    // The rules use only the kind. The app and the category are for the page to show
+    s.focus = { kind, since: at, seen: true, app: input.app ?? null, category: input.category ?? null };
+    if (s.phase === "working") {
+      // A new segment for each focus, so the progress bar shows what the time went to
+      stopAt(s, at);
+      if (runs(kind, rhythm)) startAt(s, at);
+      // Going from one slacking app to another is still the same stretch
+      s.slackSince = kind === "slack" ? (s.slackSince ?? at) : null;
+    } else if (s.phase === "slacking") {
+      if (kind === "work") work(s, rhythm, at, false);
+    } else if (s.phase === "waiting") {
+      if (kind === "work") work(s, rhythm, at, true);
+    }
+  }
+
+  function onCommand(s, rhythm, name, now, workday) {
+    if (name === "start" && s.phase === "idle" && workday) {
+      work(s, rhythm, now, true);
+    } else if (name === "pause" && (s.phase === "working" || s.phase === "slacking")) {
+      stopAt(s, now);
+      s.slackSince = null;
+      s.phase = "paused";
+      s.phaseSince = now;
+    } else if (name === "resume" && s.phase === "paused") {
+      work(s, rhythm, now, false);
+    }
+  }
+
+  /** Applies one input to the state, and returns the new state and the notifications to send.
+   * `input` is { type: "focus", at, kind, app, category }, { type: "command", name } or
+   * { type: "tick" }. `category` is { name, superName, color } */
+  function step(state, settings, input, now, lang) {
+    const s = today(state, now);
+    const notes = [];
+    const say = (key, vars) => notes.push(message(key, vars, lang));
+    const { rhythm } = settings;
+    if (input.type === "focus") {
+      // Catch up first: a limit may have passed before this event while no tick ran. Its
+      // notification would come too late, so it is not sent
+      checkTime(s, rhythm, input.at, () => {});
+      onFocus(s, rhythm, input);
+    } else if (input.type === "command") {
+      onCommand(s, rhythm, input.name, now, isWorkday(settings, now));
+    }
+    checkTime(s, rhythm, now, say);
+    return { state: s, notes };
+  }
+
+  /** The seconds of `target` in the statistics of a day */
+  function totalSeconds(items, target) {
+    return items
+      .filter((item) => matches([target], item))
+      .reduce((sum, item) => sum + item.seconds, 0);
+  }
+
+  function targetName(items, target) {
+    const item = items.find((i) => matches([target], i));
+    if (!item) return null;
+    return target.type === "category" ? item.name : item.superCategory.name;
+  }
+
+  const goalKey = (g) => `${g.target.type}:${g.target.id}:${g.rule}:${g.minutes}`;
+
+  /** Where a goal stands with `seconds` today: "done", "near", "over" or null. "near" is the
+   * last 15 minutes before an upper limit */
+  function goalLevel(goal, seconds) {
+    const limit = goal.minutes * 60;
+    if (goal.rule === "atLeast") return seconds >= limit ? "done" : null;
+    if (seconds >= limit) return "over";
+    if (goal.minutes > 15 && seconds >= limit - 15 * 60) return "near";
+    return null;
+  }
+
+  /** How far a day got toward a goal, from 0 to 1, and whether it met it. A goal to stay under
+   * a limit is at 1 while under it; past it, it goes down to 0 at twice the limit */
+  function goalRate(goal, seconds) {
+    const limit = goal.minutes * 60;
+    if (goal.rule === "atLeast") return { rate: Math.min(1, seconds / limit), met: seconds >= limit };
+    if (goalLevel(goal, seconds) !== "over") return { rate: 1, met: true };
+    return { rate: Math.min(0.99, Math.max(0, 2 - seconds / limit)), met: false };
+  }
+
+  /** How a day did on the goals: each goal, their mean rate, and whether it met them all.
+   * `items` is the result of stats.day_by_category for that day. null without goals */
+  function dayResult(goals, items) {
+    if (goals.length === 0) return null;
+    const results = goals.map((goal) => {
+      const seconds = totalSeconds(items, goal.target);
+      return { goal, seconds, ...goalRate(goal, seconds) };
+    });
+    return {
+      goals: results,
+      rate: results.reduce((sum, r) => sum + r.rate, 0) / results.length,
+      met: results.every((r) => r.met),
+    };
+  }
+
+  const GOAL_MESSAGES = { done: "goalDone", near: "goalNear", over: "goalOver" };
+
+  /** The goal notifications due now. Each one goes out once a day, and only on workdays.
+   * `items` is the result of stats.day_by_category for today */
+  function checkGoals(state, settings, items, now, lang) {
+    const s = today(state, now);
+    const notes = [];
+    if (!isWorkday(settings, now)) return { state: s, notes };
+    for (const goal of settings.goals) {
+      const name = targetName(items, goal.target);
+      if (name === null) continue;
+      const level = goalLevel(goal, totalSeconds(items, goal.target));
+      if (level === null) continue;
+      const id = `${goalKey(goal)}:${level}`;
+      if (s.notified[id]) continue;
+      s.notified[id] = true;
+      const vars = { name, time: formatMinutes(goal.minutes, lang) };
+      notes.push(message(GOAL_MESSAGES[level], vars, lang));
+    }
+    return { state: s, notes };
+  }
+
+  function message(key, vars, lang = I18n.locale()) {
+    return I18n.format(I18n.text(lang).notify[key], vars);
+  }
+
+  /** 90 → "1 小时 30 分钟", "1 h 30 min", "1時間30分" */
+  function formatMinutes(minutes, lang = I18n.locale()) {
+    const { units } = I18n.text(lang);
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    const hours = I18n.format(units.hours, { n: h });
+    const mins = I18n.format(units.minutes, { n: m });
+    if (h && m) return hours + units.join + mins;
+    return h ? hours : mins;
+  }
+
+  globalThis.FocusCore = {
+    MINUTE,
+    DEFAULT_SETTINGS,
+    withDefaults,
+    localDate,
+    isWorkday,
+    matches,
+    kindOf,
+    newDay,
+    today,
+    elapsed,
+    step,
+    checkGoals,
+    goalLevel,
+    goalRate,
+    dayResult,
+    safeColor,
+    totalSeconds,
+    message,
+    formatMinutes,
+  };
+})();

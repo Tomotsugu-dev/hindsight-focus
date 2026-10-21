@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Focus</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header class="app-header">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M11 5H8a3 3 0 0 0-3 3v3m16-6h3a3 3 0 0 1 3 3v3M5 21v3a3 3 0 0 0 3 3h3m10 0h3a3 3 0 0 0 3-3v-3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+            <circle cx="16" cy="16" r="4" fill="currentColor" />
+          </svg>
+          <h1 id="app-title"></h1>
+        </div>
+        <time class="page-date" id="page-date"></time>
+      </header>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab" id="tab-today" type="button" role="tab" aria-controls="view-today" aria-selected="true"></button>
+        <button class="tab" id="tab-history" type="button" role="tab" aria-controls="view-history" aria-selected="false" tabindex="-1"></button>
+        <button class="tab" id="tab-settings" type="button" role="tab" aria-controls="view-settings" aria-selected="false" tabindex="-1"></button>
+      </nav>
+
+      <p class="error" id="error" role="alert" hidden></p>
+
+      <div class="view" id="view-today" role="tabpanel" aria-labelledby="tab-today" tabindex="0">
+        <section class="card hero" id="hero">
+          <div class="hero-top">
+            <span class="badge" id="phase"></span>
+            <span class="rounds" id="rounds"></span>
+          </div>
+          <div class="timer-display">
+            <p class="timer-caption" id="timer-caption"></p>
+            <div class="clock"><span id="clock"></span><span class="clock-total" id="clock-total"></span></div>
+          </div>
+          <div class="session-progress" id="session-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="session-fill" id="session-fill"></div>
+          </div>
+          <p class="hint" id="hint"></p>
+          <div class="hero-actions">
+            <button class="button" id="primary" type="button" hidden></button>
+          </div>
+        </section>
+
+        <section class="context-section">
+          <div class="now" id="now">
+            <span class="context-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+            </span>
+            <div class="text now-content">
+              <span class="sr-only" id="now-title"></span>
+              <span class="label now-app" id="now-app"></span>
+              <div class="now-line">
+                <span class="status" id="now-kind"></span>
+                <span class="now-category" id="now-category"></span>
+              </div>
+            </div>
+            <span class="now-time" id="now-time"></span>
+          </div>
+
+          <div class="activity-section" id="activity-section">
+            <div class="activity-head">
+              <div class="activity-label">
+                <h2 id="activity-title"></h2>
+                <span id="activity-caption"></span>
+              </div>
+            </div>
+            <div class="progress-wrap" id="progress-wrap" role="group" aria-describedby="activity-caption">
+              <div class="progress" id="progress"></div>
+              <div class="tip" id="progress-tip" role="tooltip" hidden></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section goals-section">
+          <div class="section-head goals-head">
+            <h2 class="section-title" id="goals-title"></h2>
+            <button class="text-button" id="goals-edit" type="button"></button>
+          </div>
+          <div class="card" id="goals"></div>
+        </section>
+      </div>
+
+      <div class="view review-view" id="view-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0" hidden>
+        <section class="card month">
+          <div class="month-head">
+            <h2 id="month-title"></h2>
+            <span class="month-summary" id="month-summary"></span>
+          </div>
+          <div class="month-weekdays" id="month-weekdays" aria-hidden="true"></div>
+          <div class="month-grid" id="month-grid" role="group"></div>
+          <div class="month-legend" id="month-legend" aria-hidden="true"></div>
+        </section>
+
+        <p class="review-message" id="review-message" role="status" hidden></p>
+        <button class="button secondary" id="review-retry" type="button" hidden></button>
+
+        <section class="card" id="day-detail" hidden></section>
+      </div>
+
+      <div class="settings-intro">
+        <h2 id="settings-heading"></h2>
+        <span id="settings-save" role="status" aria-live="polite"></span>
+      </div>
+      <div class="view" id="view-settings" role="tabpanel" aria-labelledby="tab-settings" tabindex="0" hidden></div>
+    </main>
+
+    <script src="../_page.js"></script>
+    <script src="../i18n.js"></script>
+    <script src="../core.js"></script>
+    <script src="../store.js"></script>
+    <script src="icons.js"></script>
+    <script src="review.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>
