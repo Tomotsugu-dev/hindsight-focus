@@ -80,11 +80,12 @@ test("今日目标：第一个「至少」目标今天到了多少；没有这�
     { id: "video", seconds: 30 * 60, superCategory: { id: "play" } },
   ];
   const c = F.content(s, defaults, at(9, 10), "zh-CN", items);
-  assert.deepEqual(c.open.left[0].text, [
-    { text: "今日目标 " },
-    { text: "2:40", bold: true },
-    { text: "/6:00", dim: true },
-  ]);
+  assert.deepEqual(c.open.left[0], {
+    type: "text",
+    text: [{ text: "2:40", color: "#34d399", bold: true }],
+    sub: "/ 6:00",
+    size: "large",
+  });
   assert.equal(c.open.left[1].type, "cells");
   const atMostOnly = { ...defaults, goals: defaults.goals.filter((g) => g.rule === "atMost") };
   assert.equal(F.content(s, atMostOnly, at(9, 10), "zh-CN", items).open.left.length, 1);
@@ -186,7 +187,7 @@ test("每种语言的字都在岛的上限里，长应用名截断", () => {
   const long = "A Very Long Application Name That Goes On";
   d.focus(at(9, 0), "slack", { app: long, category: code });
   d.start(at(9, 0));
-  // 最宽的今日目标：做了 23:59，目标 24:00；分心次数三位数
+  // 最宽的目标：做了 23:59，目标 24:00；分心次数三位数
   const goals = [{ target: { type: "super", id: "work" }, rule: "atLeast", minutes: 24 * 60 }];
   const items = [{ id: "code", seconds: (24 * 60 - 1) * 60, superCategory: { id: "work" } }];
   const joined = (text) => text.text.map((r) => r.text).join("");
@@ -194,10 +195,14 @@ test("每种语言的字都在岛的上限里，长应用名截断", () => {
     s.distractions = 999;
     for (const lang of I.LOCALES) {
       const c = F.content(s, { ...defaults, goals }, at(9, 9), lang, items);
-      for (const text of [c.open.topRight, c.open.left[0], c.open.bottomRight]) {
+      for (const text of [c.open.topRight, c.open.bottomRight]) {
         assert.ok(F.width(joined(text)) <= 20, `${lang} ${s.phase} ${joined(text)}`);
         assert.ok(text.text.every((r) => r.text !== ""), `${lang} 有空的一段`);
       }
+      // 大字最多 8，后面的小字最多 14
+      const target = c.open.left[0];
+      assert.equal(target.size, "large");
+      assert.ok(F.width(joined(target)) <= 8 && F.width(target.sub) <= 14, joined(target));
     }
   }
 });

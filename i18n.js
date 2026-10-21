@@ -97,7 +97,6 @@
       pause: "暂停",
       resume: "继续",
       rounds: "今天完成 {n} 段",
-      islandGoal: "今日目标",
       islandDistractions: "分心 {n} 次",
       goals: {
         title: "今天的目标",
@@ -216,7 +215,6 @@
       pause: "暫停",
       resume: "繼續",
       rounds: "今天完成 {n} 段",
-      islandGoal: "今日目標",
       islandDistractions: "分心 {n} 次",
       goals: {
         title: "今天的目標",
@@ -335,7 +333,6 @@
       pause: "Pause",
       resume: "Resume",
       rounds: "Blocks done today: {n}",
-      islandGoal: "Daily goal",
       islandDistractions: "Distractions: {n}",
       goals: {
         title: "Today's goals",
@@ -454,7 +451,6 @@
       pause: "一時停止",
       resume: "再開",
       rounds: "今日の完了セッション：{n}",
-      islandGoal: "今日の目標",
       islandDistractions: "脱線 {n} 回",
       goals: {
         title: "今日の目標",
@@ -573,7 +569,6 @@
       pause: "Pausar",
       resume: "Retomar",
       rounds: "Blocos concluídos hoje: {n}",
-      islandGoal: "Meta",
       islandDistractions: "Distrações: {n}",
       goals: {
         title: "Metas de hoje",
@@ -692,7 +687,6 @@
       pause: "Pausar",
       resume: "Reanudar",
       rounds: "Bloques completados hoy: {n}",
-      islandGoal: "Objetivo",
       islandDistractions: "Distracciones: {n}",
       goals: {
         title: "Objetivos de hoy",
