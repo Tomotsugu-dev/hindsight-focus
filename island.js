@@ -91,7 +91,7 @@
   /** 90 分钟 → "1:30" */
   const clock = (minutes) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
 
-  /** 第一个「至少」目标今天到了多少：绿色大字是做了多久，后面的小字是目标，比如「2:40 / 6:00」。
+  /** 第一个「至少」目标今天到了多少：白色大字是做了多久，后面的小字是目标，比如「2:40 / 6:00」。
    * 没有这种目标、还没拿到统计时返回 null */
   function goal(settings, items) {
     const g = settings.goals.find((g) => g.rule === "atLeast");
@@ -99,7 +99,7 @@
     const done = clock(Math.floor(C.totalSeconds(items, g.target) / 60));
     return {
       type: "text",
-      text: [{ text: done, color: RUNNING, bold: true }],
+      text: [{ text: done, bold: true }],
       sub: `/ ${clock(g.minutes)}`,
       size: "large",
     };

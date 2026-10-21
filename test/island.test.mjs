@@ -82,7 +82,7 @@ test("今日目标：第一个「至少」目标今天到了多少；没有这�
   const c = F.content(s, defaults, at(9, 10), "zh-CN", items);
   assert.deepEqual(c.open.left[0], {
     type: "text",
-    text: [{ text: "2:40", color: "#34d399", bold: true }],
+    text: [{ text: "2:40", bold: true }],
     sub: "/ 6:00",
     size: "large",
   });
