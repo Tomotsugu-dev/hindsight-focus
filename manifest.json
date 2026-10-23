@@ -1,7 +1,7 @@
 {
   "id": "hindsight-focus",
   "name": "Focus",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "permissions": [
     "stats.read",
     "stats.today",
@@ -12,6 +12,7 @@
     "focus.app",
     "focus.category",
     "notifications",
+    "notifications.sound",
     "island"
   ],
   "storage_mb": 1,

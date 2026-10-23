@@ -80,7 +80,7 @@
   }
 
   async function send(notes) {
-    for (const body of notes) await call("notifications.send", { body });
+    for (const body of notes) await call("notifications.send", { body, sound: true });
   }
 
   /** checkGoals 存下的今天的统计：后台和页面交给岛的今日目标都从这里算，两边才一样。不是今天的
