@@ -58,10 +58,8 @@ test("计时时：左边是小类的白色图标，右边绿色倒数本段，�
   assert.equal(c.closed.right.end, new Date(at(9, 45)).toISOString());
   assert.equal(c.closed.right.pausedAt, undefined);
   assert.deepEqual(c.open.right[1], { type: "button", id: "pause", icon: "Pause" });
-  assert.deepEqual(c.open.topRight.text, [
-    { text: "工作中", bold: true },
-    { text: " · Code", dim: true },
-  ]);
+  // 右上角只有阶段名，不带应用名
+  assert.deepEqual(c.open.topRight.text, [{ text: "工作中", bold: true }]);
   assert.deepEqual(c.open.bottomRight.text, [
     { text: "分心 " },
     { text: "0", color: "#ee939c", bold: true },
@@ -182,10 +180,9 @@ test("没有小类时是时钟图标", () => {
   assert.deepEqual(island(s, at(9, 6)).closed.left, { type: "icon", name: "Clock" });
 });
 
-test("每种语言的字都在岛的上限里，长应用名截断", () => {
+test("每种语言的字都在岛的上限里", () => {
   const d = day();
-  const long = "A Very Long Application Name That Goes On";
-  d.focus(at(9, 0), "slack", { app: long, category: code });
+  d.focus(at(9, 0), "slack", { app: "Code", category: code });
   d.start(at(9, 0));
   // 最宽的目标：做了 23:59，目标 24:00；分心次数三位数
   const goals = [{ target: { type: "super", id: "work" }, rule: "atLeast", minutes: 24 * 60 }];
@@ -207,6 +204,15 @@ test("每种语言的字都在岛的上限里，长应用名截断", () => {
   }
 });
 
+test("右上角的阶段名每种语言都不超过 12 宽：再长岛就会变宽", () => {
+  for (const lang of I.LOCALES) {
+    for (const phase of ["working", "slacking", "paused", "resting"]) {
+      const name = I.text(lang).islandPhase[phase];
+      assert.ok(name && F.width(name) <= 12, `${lang} ${phase} ${name}`);
+    }
+  }
+});
+
 test("岛上放不放：默认不放；开了「最小化到灵动岛」，窗口最小化或者关着才放", () => {
   assert.equal(defaults.minimizeToIsland, false);
   for (const window of ["open", "minimized", "closed"]) assert.equal(F.wanted(defaults, window), false);
@@ -214,12 +220,6 @@ test("岛上放不放：默认不放；开了「最小化到灵动岛」，窗�
   assert.equal(F.wanted(on, "open"), false);
   assert.equal(F.wanted(on, "minimized"), true);
   assert.equal(F.wanted(on, "closed"), true);
-});
-
-test("fit：去掉换行和控制字符，太长的截到上限并加省略号", () => {
-  assert.equal(F.fit("a\nb\u0007c", 20), "abc");
-  assert.equal(F.fit("abcdef", 5), "abc…");
-  assert.equal(F.width(F.fit("专注专注专注", 7)), 6);
 });
 
 test("nextLimit：计时时是本段做完，休息时是休息结束，停着没有", () => {

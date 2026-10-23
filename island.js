@@ -9,8 +9,6 @@
   // 计时器在走是绿的，停着是灰的
   const RUNNING = "#34d399";
   const STOPPED = "#918d9f";
-  // 岛上小字最多 20 宽，见 Hindsight 的 docs/design/plugins/island.md
-  const SMALL = 20;
   // 每行最多 20 格，最多 3 行
   const MAX_CELLS = 60;
   // 和页面的轨迹一样，一行 15 格
@@ -21,18 +19,6 @@
 
   /** 岛算的宽度：ASCII 算 1，别的算 2。岛对一部分非 ASCII 字只算 1，所以这里只会算多 */
   const width = (text) => [...text].reduce((n, c) => n + (c.codePointAt(0) < 0x80 ? 1 : 2), 0);
-
-  /** 去掉岛不收的字，再截到最多 `max` 宽，截了的末尾是「…」 */
-  function fit(text, max) {
-    const clean = String(text ?? "").replace(UNSAFE, "");
-    if (width(clean) <= max) return clean;
-    let out = "";
-    for (const c of clean) {
-      if (width(out + c) + width("…") > max) break;
-      out += c;
-    }
-    return `${out}…`;
-  }
 
   /** 分类的图标名，岛不收的返回 null */
   function iconName(value) {
@@ -130,13 +116,6 @@
     const icon = { type: "icon", name };
     const time = timer(s, rhythm);
 
-    const phase = fit(T.phase[s.phase], SMALL);
-    const line = [{ text: phase, bold: true }];
-    const room = SMALL - width(phase);
-    if (s.phase !== "resting" && s.focus.app && room >= 6) {
-      line.push({ text: fit(` · ${s.focus.app}`, room), dim: true });
-    }
-
     const right = [time];
     if (s.phase === "paused") right.push({ type: "button", id: "resume", icon: "Play" });
     else if (s.phase !== "resting") right.push({ type: "button", id: "pause", icon: "Pause" });
@@ -145,7 +124,8 @@
     return {
       closed: { left: icon, right: time },
       open: {
-        topRight: { type: "text", text: line },
+        // 只放短的阶段名：岛居中，这里的字从刘海右边排起，字长一点岛就宽出两倍
+        topRight: { type: "text", text: [{ text: T.islandPhase[s.phase], bold: true }] },
         left: target ? [target, cells(s, rhythm, now)] : [cells(s, rhythm, now)],
         right,
         bottomRight: distractions(s, T),
@@ -157,5 +137,5 @@
    * Hindsight 的 window.changed 说的："open"、"minimized" 或 "closed" */
   const wanted = (settings, window) => settings.minimizeToIsland === true && window !== "open";
 
-  globalThis.FocusIsland = { content, fit, width, wanted };
+  globalThis.FocusIsland = { content, width, wanted };
 })();

@@ -98,6 +98,12 @@
       resume: "继续",
       rounds: "今天完成 {n} 段",
       islandDistractions: "分心 {n} 次",
+      islandPhase: {
+        working: "工作中",
+        slacking: "摸鱼暂停",
+        paused: "已暂停",
+        resting: "休息中",
+      },
       goals: {
         title: "今天的目标",
         empty: "还没有目标，在「设置」里添加。",
@@ -223,6 +229,12 @@
       resume: "繼續",
       rounds: "今天完成 {n} 段",
       islandDistractions: "分心 {n} 次",
+      islandPhase: {
+        working: "工作中",
+        slacking: "摸魚暫停",
+        paused: "已暫停",
+        resting: "休息中",
+      },
       goals: {
         title: "今天的目標",
         empty: "還沒有目標，在「設定」裡新增。",
@@ -348,6 +360,12 @@
       resume: "Resume",
       rounds: "Blocks done today: {n}",
       islandDistractions: "Distractions: {n}",
+      islandPhase: {
+        working: "Working",
+        slacking: "Off task",
+        paused: "Paused",
+        resting: "Break",
+      },
       goals: {
         title: "Today's goals",
         empty: "No goals yet. Add them in Settings.",
@@ -473,6 +491,12 @@
       resume: "再開",
       rounds: "今日の完了セッション：{n}",
       islandDistractions: "脱線 {n} 回",
+      islandPhase: {
+        working: "作業中",
+        slacking: "脱線中",
+        paused: "一時停止中",
+        resting: "休憩中",
+      },
       goals: {
         title: "今日の目標",
         empty: "まだ目標がありません。「設定」で追加できます。",
@@ -598,6 +622,12 @@
       resume: "Retomar",
       rounds: "Blocos concluídos hoje: {n}",
       islandDistractions: "Distrações: {n}",
+      islandPhase: {
+        working: "Trabalhando",
+        slacking: "Distraído",
+        paused: "Pausado",
+        resting: "Intervalo",
+      },
       goals: {
         title: "Metas de hoje",
         empty: "Nenhuma meta ainda. Adicione em Configurações.",
@@ -723,6 +753,12 @@
       resume: "Reanudar",
       rounds: "Bloques completados hoy: {n}",
       islandDistractions: "Distracciones: {n}",
+      islandPhase: {
+        working: "Trabajando",
+        slacking: "Distraído",
+        paused: "En pausa",
+        resting: "Descanso",
+      },
       goals: {
         title: "Objetivos de hoy",
         empty: "Aún no hay objetivos. Añádelos en Ajustes.",
