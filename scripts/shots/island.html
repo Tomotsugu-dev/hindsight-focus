@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- 岛的截图页：屏幕最上面正中的一块，岛是 Hindsight 岛的页面，放在 iframe 里。见 island-host.js -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: linear-gradient(180deg, #7e8db3, #b9c4df);
+      }
+      iframe {
+        position: absolute;
+        top: 0;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="island"></iframe>
+    <script src="_page.js"></script>
+    <script src="i18n.js"></script>
+    <script src="core.js"></script>
+    <script src="island.js"></script>
+    <script src="scripts/shots/island-host.js"></script>
+  </body>
+</html>
