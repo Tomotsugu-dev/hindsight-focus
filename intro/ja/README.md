@@ -1,4 +1,8 @@
-# 集中（Focus）
+<p align="center">
+  <img src="../../icon.png" alt="集中" width="128">
+</p>
+
+<h1 align="center">集中（Focus）</h1>
 
 <p align="center">
   <a href="../zh/README.md">简体中文</a> · <a href="../zh-TW/README.md">繁體中文</a> · <a href="../../README.md">English</a> · <a href="README.md">日本語</a> · <a href="../pt/README.md">Português</a> · <a href="../es/README.md">Español</a>
