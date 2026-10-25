@@ -1,7 +1,7 @@
 {
   "id": "hindsight-focus",
   "name": "Focus",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "permissions": [
     "stats.read",
     "stats.today",
