@@ -45,6 +45,7 @@
       notify: {
         rest: "已经专注 {work} 分钟了，休息 {rest} 分钟吧。",
         restOver: "休息结束，可以开始下一段了。",
+        workStart: "开始专注，{work} 分钟后休息。",
         slack: "摸鱼 {minutes} 分钟了，计时先停下。回到工作就接着计时。",
         goalDone: "今天「{name}」满 {time}了，目标完成。",
         goalNear: "今天「{name}」再过 15 分钟就到 {time}的上限了。",
@@ -176,6 +177,7 @@
       notify: {
         rest: "已經專注 {work} 分鐘了，休息 {rest} 分鐘吧。",
         restOver: "休息結束，可以開始下一段了。",
+        workStart: "開始專注，{work} 分鐘後休息。",
         slack: "摸魚 {minutes} 分鐘了，計時先停下。回到工作就接著計時。",
         goalDone: "今天「{name}」滿 {time}了，目標達成。",
         goalNear: "今天「{name}」再過 15 分鐘就到 {time}的上限了。",
@@ -307,6 +309,7 @@
       notify: {
         rest: "{work} minutes of focus. Take a {rest}-minute break.",
         restOver: "The break is over. Ready for the next block.",
+        workStart: "Focus started. Break in {work} minutes.",
         slack: "{minutes} minutes off task. The timer stops until you get back to work.",
         goalDone: "{name}: {time} today. Goal reached.",
         goalNear: "{name}: 15 minutes left before today's limit of {time}.",
@@ -438,6 +441,7 @@
       notify: {
         rest: "{work} 分集中しました。{rest} 分休憩しましょう。",
         restOver: "休憩終了です。次のセッションを始めましょう。",
+        workStart: "集中を始めました。{work} 分後に休憩です。",
         slack: "{minutes} 分脱線しています。作業に戻るまで計測を止めます。",
         goalDone: "今日の「{name}」が {time}に達しました。目標達成です。",
         goalNear: "今日の「{name}」は、あと 15 分で上限の {time}です。",
@@ -569,6 +573,7 @@
       notify: {
         rest: "{work} minutos de foco. Faça um intervalo de {rest} minutos.",
         restOver: "O intervalo acabou. Pronto para o próximo bloco.",
+        workStart: "Foco iniciado. Intervalo em {work} minutos.",
         slack: "{minutes} minutos fora da tarefa. O cronômetro para até você voltar ao trabalho.",
         goalDone: "{name}: {time} hoje. Meta alcançada.",
         goalNear: "{name}: faltam 15 minutos para o limite de hoje, {time}.",
@@ -700,6 +705,7 @@
       notify: {
         rest: "{work} minutos de enfoque. Tómate un descanso de {rest} minutos.",
         restOver: "Se acabó el descanso. Listo para el siguiente bloque.",
+        workStart: "Enfoque iniciado. Descanso en {work} minutos.",
         slack: "{minutes} minutos distraído. El temporizador se detiene hasta que vuelvas al trabajo.",
         goalDone: "{name}: {time} hoy. Objetivo cumplido.",
         goalNear: "{name}: faltan 15 minutos para el límite de hoy, {time}.",

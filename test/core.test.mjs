@@ -11,7 +11,7 @@ const MIN = C.MINUTE;
 // 2026-10-21 是周三，10-24 是周六
 const at = (h, m, day = 21) => new Date(2026, 9, day, h, m).getTime();
 const defaults = C.withDefaults(null);
-const say = (key, vars = {}) => C.message(key, vars, "zh-CN");
+const say = (key, vars = {}, sound = false) => ({ body: C.message(key, vars, "zh-CN"), sound });
 const minutes = (state, t) => C.elapsed(state, t) / MIN;
 
 /** 一天里按时间顺序喂给规则。focus 的第三个参数是事件到达的时间，默认就是发生的时间 */
@@ -69,10 +69,14 @@ test("满 45 分钟提醒休息；休息满 15 分钟提醒结束；人不在就
   const next = d.focus(at(10, 10), "work");
   assert.equal(next.phase, "working");
   assert.equal(minutes(next, at(10, 20)), 10);
-  assert.deepEqual(d.notes, [say("rest", { work: 45, rest: 15 }), say("restOver")]);
+  assert.deepEqual(d.notes, [
+    say("rest", { work: 45, rest: 15 }),
+    say("restOver"),
+    say("workStart", { work: 45 }),
+  ]);
 });
 
-test("休息结束时人已经在工作分类里：下一段从休息结束那一刻开始", () => {
+test("休息结束时人已经在工作分类里：下一段从休息结束那一刻开始，只发休息结束一条", () => {
   const d = day();
   d.focus(at(8, 55), "work");
   d.start(at(9, 0));
@@ -80,6 +84,53 @@ test("休息结束时人已经在工作分类里：下一段从休息结束那�
   const next = d.tick(at(10, 0));
   assert.equal(next.phase, "working");
   assert.equal(minutes(next, at(10, 30)), 30);
+  assert.deepEqual(d.notes, [say("rest", { work: 45, rest: 15 }), say("restOver")]);
+});
+
+test("开始工作的通知：自己点开始、继续不发；休息完回到工作、计时自己开始时才发", () => {
+  const d = day();
+  d.focus(at(8, 55), "work");
+  d.start(at(9, 0));
+  d.pause(at(9, 10));
+  d.resume(at(9, 20));
+  assert.deepEqual(d.notes, []);
+
+  d.tick(at(9, 55));
+  d.focus(at(9, 56), "away");
+  d.tick(at(10, 10));
+  d.focus(at(10, 20), "work");
+  assert.deepEqual(d.notes, [
+    say("rest", { work: 45, rest: 15 }),
+    say("restOver"),
+    say("workStart", { work: 45 }),
+  ]);
+});
+
+test("计时提示音默认关；打开后开始工作、开始休息、休息结束响，摸鱼和目标不响", () => {
+  assert.equal(defaults.timerSound, false);
+  const settings = C.withDefaults({ timerSound: true });
+  const d = day(settings);
+  d.focus(at(8, 55), "work");
+  d.start(at(9, 0));
+  d.focus(at(9, 10), "slack");
+  d.tick(at(9, 15));
+  d.focus(at(9, 20), "work");
+  d.tick(at(9, 55));
+  d.focus(at(9, 56), "away");
+  d.tick(at(10, 10));
+  d.focus(at(10, 20), "work");
+  assert.deepEqual(d.notes, [
+    say("slack", { minutes: 5 }),
+    say("rest", { work: 45, rest: 15 }, true),
+    say("restOver", {}, true),
+    say("workStart", { work: 45 }, true),
+  ]);
+
+  const items = [
+    { id: "code", name: "编程", seconds: 360 * 60, superCategory: { id: "work", name: "工作" } },
+  ];
+  const { notes } = C.checkGoals(null, settings, items, at(18, 0), "zh-CN");
+  assert.deepEqual(notes, [{ body: "今天「工作」满 6 小时了，目标完成。", sound: false }]);
 });
 
 test("摸鱼满 5 分钟：提醒、暂停，这 5 分钟扣掉；回到工作接着计时", () => {
@@ -181,7 +232,7 @@ test("离开满 15 分钟算休息过了：计时清零，等回到工作再开�
   d.focus(at(9, 30), "work");
   assert.equal(d.tick(at(10, 14)).phase, "working");
   assert.equal(d.tick(at(10, 15)).phase, "resting");
-  assert.deepEqual(d.notes, [say("rest", { work: 45, rest: 15 })]);
+  assert.deepEqual(d.notes, [say("workStart", { work: 45 }), say("rest", { work: 45, rest: 15 })]);
 });
 
 test("中性分类：设成暂停时不计时，设成照走时照算", () => {
@@ -238,7 +289,7 @@ test("目标：至少的达到时提醒一次；至多的剩 15 分钟一次、�
   const check = (work, play, t = at(18, 0)) => {
     const r = C.checkGoals(state, defaults, items(work, play), t, "zh-CN");
     state = r.state;
-    return r.notes;
+    return r.notes.map((note) => note.body);
   };
 
   assert.deepEqual(check(300, 100), []);
@@ -260,7 +311,7 @@ test("目标挑的是分类时，按分类名提醒", () => {
     { id: "code", name: "编程", seconds: 240 * 60, superCategory: { id: "work", name: "工作" } },
   ];
   const { notes } = C.checkGoals(null, settings, items, at(15, 0), "zh-CN");
-  assert.deepEqual(notes, ["今天「编程」满 4 小时了，目标完成。"]);
+  assert.deepEqual(notes.map((note) => note.body), ["今天「编程」满 4 小时了，目标完成。"]);
 });
 
 test("时长的写法", () => {

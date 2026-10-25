@@ -13,6 +13,8 @@
     appearance: "system",
     // 窗口最小化或者关掉时，把计时放到 Hindsight 的岛上
     minimizeToIsland: false,
+    // 开始工作、开始休息、休息结束的通知响一声系统提示音
+    timerSound: false,
     // Days of the week as in Date.getDay(): 0 is Sunday
     workdays: [1, 2, 3, 4, 5],
     goals: [
@@ -324,7 +326,7 @@
     }
   }
 
-  function onFocus(s, rhythm, input) {
+  function onFocus(s, rhythm, input, say) {
     const { at, kind } = input;
     // The rules use only the kind. The app and the category are for the page to show
     s.focus = { kind, since: at, seen: true, app: input.app ?? null, category: input.category ?? null };
@@ -336,7 +338,11 @@
     } else if (s.phase === "slacking") {
       if (kind === "work") work(s, rhythm, at, false);
     } else if (s.phase === "waiting") {
-      if (kind === "work") work(s, rhythm, at, true);
+      // 休息完回到工作，计时自己开始。自己点开始、继续的不提醒
+      if (kind === "work") {
+        work(s, rhythm, at, true);
+        say("workStart", { work: rhythm.workMinutes });
+      }
     }
   }
 
@@ -353,19 +359,26 @@
     }
   }
 
-  /** Applies one input to the state, and returns the new state and the notifications to send.
-   * `input` is { type: "focus", at, kind, app, category }, { type: "command", name } or
-   * { type: "tick" }. `category` is { name, superName, color } */
+  // 打开计时提示音时会响的通知
+  const TIMER_NOTES = ["workStart", "rest", "restOver"];
+
+  /** Applies one input to the state, and returns the new state and the notifications to send,
+   * each { body, sound }. `input` is { type: "focus", at, kind, app, category },
+   * { type: "command", name } or { type: "tick" }. `category` is { name, superName, color } */
   function step(state, settings, input, now, lang) {
     const s = today(state, now);
     const notes = [];
-    const say = (key, vars) => notes.push(message(key, vars, lang));
+    const say = (key, vars) =>
+      notes.push({
+        body: message(key, vars, lang),
+        sound: settings.timerSound === true && TIMER_NOTES.includes(key),
+      });
     const { rhythm } = settings;
     if (input.type === "focus") {
       // Catch up first: a limit may have passed before this event while no tick ran. Its
       // notification would come too late, so it is not sent
       checkTime(s, rhythm, input.at, () => {});
-      onFocus(s, rhythm, input);
+      onFocus(s, rhythm, input, say);
     } else if (input.type === "command") {
       onCommand(s, rhythm, input.name, now, isWorkday(settings, now));
     }
@@ -424,8 +437,8 @@
 
   const GOAL_MESSAGES = { done: "goalDone", near: "goalNear", over: "goalOver" };
 
-  /** The goal notifications due now. Each one goes out once a day, and only on workdays.
-   * `items` is the result of stats.day_by_category for today */
+  /** The goal notifications due now, each { body, sound }; they never ring. Each one goes out
+   * once a day, and only on workdays. `items` is the result of stats.day_by_category for today */
   function checkGoals(state, settings, items, now, lang) {
     const s = today(state, now);
     const notes = [];
@@ -439,7 +452,7 @@
       if (s.notified[id]) continue;
       s.notified[id] = true;
       const vars = { name, time: formatMinutes(goal.minutes, lang) };
-      notes.push(message(GOAL_MESSAGES[level], vars, lang));
+      notes.push({ body: message(GOAL_MESSAGES[level], vars, lang), sound: false });
     }
     return { state: s, notes };
   }
