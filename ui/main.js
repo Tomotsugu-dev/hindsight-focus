@@ -610,6 +610,23 @@
     return [numberInput(value, 1, max, set, { focusKey, label: `${label} (${unit})` }), el("span", { class: "unit" }, unit)];
   }
 
+  /** 只有开、关两项的下拉框 */
+  function onOffSelect(on, set, focusKey) {
+    return el(
+      "select",
+      {
+        class: "select",
+        "data-focus": focusKey,
+        onchange: (e) => {
+          set(e.target.value === "on");
+          persist();
+        },
+      },
+      el("option", { value: "off", selected: !on }, S.off),
+      el("option", { value: "on", selected: on }, S.on),
+    );
+  }
+
   function iconButton(name, label, onclick) {
     return el("button", { type: "button", class: "icon-button", "aria-label": label, title: label, onclick }, icon(name));
   }
@@ -647,18 +664,10 @@
       },
       ["system", "light", "dark"].map((value) => el("option", { value, selected: value === look }, S[value])),
     );
-    const toIsland = el(
-      "select",
-      {
-        class: "select",
-        "data-focus": "minimize-to-island",
-        onchange: (e) => {
-          settings.minimizeToIsland = e.target.value === "on";
-          persist();
-        },
-      },
-      el("option", { value: "off", selected: !settings.minimizeToIsland }, S.islandOff),
-      el("option", { value: "on", selected: settings.minimizeToIsland === true }, S.islandOn),
+    const toIsland = onOffSelect(
+      settings.minimizeToIsland === true,
+      (on) => (settings.minimizeToIsland = on),
+      "minimize-to-island",
     );
     return section(
       S.interface,
@@ -777,6 +786,11 @@
       row(S.workFor, null, minutesControl(r.workMinutes, 240, (v) => (r.workMinutes = v), "rhythm-work", S.workFor)),
       row(S.restFor, null, minutesControl(r.restMinutes, 120, (v) => (r.restMinutes = v), "rhythm-rest", S.restFor)),
       row(S.slackFor, null, minutesControl(r.slackMinutes, 120, (v) => (r.slackMinutes = v), "rhythm-slack", S.slackFor)),
+      row(
+        S.timerSound,
+        S.timerSoundHint,
+        onOffSelect(settings.timerSound === true, (on) => (settings.timerSound = on), "timer-sound"),
+      ),
     );
   }
 
