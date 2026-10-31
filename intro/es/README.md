@@ -40,7 +40,7 @@ El plugin de enfoque oficial de [Hindsight](https://github.com/Tomotsugu-dev/Hin
 - **Aviso de distracción**: tras 5 minutos seguidos de distracción, te avisa y pausa el temporizador.
 - **Objetivos diarios**: por ejemplo, al menos 6 horas de Trabajo y como máximo 2 horas de Ocio. Te avisa al cumplir o superar un objetivo.
 - **Calendario del mes**: comprueba de un vistazo si cumpliste tus objetivos cada día laborable del mes.
-- **Compatible con la isla**: si lo activas, el temporizador aparece en la isla mientras la ventana está minimizada o cerrada (macOS).
+- **Compatible con la isla**: si lo activas, el temporizador aparece en la isla de Hindsight mientras la ventana está minimizada o cerrada.
 
 ## Instalación
 

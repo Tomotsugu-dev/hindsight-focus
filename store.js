@@ -96,21 +96,36 @@
     return (await read("window")).value ?? "closed";
   }
 
-  function setWindow(state) {
-    return update("window", () => ({ value: state }));
+  /** 窗口又打开了（新开的，或者从最小化还原）：「退出」到此为止 */
+  async function setWindow(state) {
+    await update("window", () => ({ value: state }));
+    if (state === "open") await setQuit(false);
   }
 
-  // 这一边上次交给岛的内容：一样的就不再交
+  /** 记下用户在设置里点了「退出」没有：点了以后窗口最小化、关掉都不上岛。插件窗口再打开（见
+   * setWindow）、页面再打开（见 ui/main.js 的 start）时清掉 */
+  function setQuit(value) {
+    return update("quit", () => ({ value }));
+  }
+
+  /** 设置里的「退出」：撤下岛，之后关窗口、最小化都不上岛。不改设置，计时照常 */
+  async function quit() {
+    await setQuit(true);
+    await call("island.hide");
+  }
+
+  // 这一边上次交给岛的内容，和那时「退出」那一行的版本：一样的就不再交。「退出」时页面直接撤下岛，
+  // 那一行一变，两边记的都不算数了
   let lastIsland;
 
   /** 把 `state` 放到岛上，不该放时撤下 */
   async function showIsland(state, s, now) {
-    const [items, window] = await Promise.all([todayStats(now), windowState()]);
+    const [items, window, quitRow] = await Promise.all([todayStats(now), windowState(), read("quit")]);
     const lang = FocusI18n.pick(s.language);
-    const content = FocusIsland.wanted(s, window)
+    const content = FocusIsland.wanted(s, window, quitRow.value === true)
       ? FocusIsland.content(state, s, now, lang, items)
       : null;
-    const json = JSON.stringify(content);
+    const json = JSON.stringify([content, quitRow.version]);
     if (json === lastIsland) return;
     lastIsland = json;
     try {
@@ -189,6 +204,6 @@
 
   globalThis.FocusStore = {
     init, read, settings, saveSettings, history, startHistory, apply, checkGoals, nextLimit,
-    setWindow,
+    setWindow, setQuit, quit,
   };
 })();

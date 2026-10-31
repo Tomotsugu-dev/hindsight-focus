@@ -33,17 +33,58 @@ function day(settings = defaults) {
 const island = (state, now, settings = defaults, lang = "zh-CN") =>
   F.content(state, settings, now, lang);
 
-test("还没开始、等下一段的时候岛上不放东西", () => {
+/** 45 分钟做完，休息 15 分钟；10:00 休息结束时不在工作的分类里，就等下一段 */
+function waiting() {
   const d = day();
-  assert.equal(island(d.tick(at(9, 0)), at(9, 0)), null);
   d.focus(at(9, 0), "work", { app: "Code", category: code });
   d.start(at(9, 0));
-  // 45 分钟做完，休息 15 分钟；休息结束时不在工作的分类里，就等下一段
   d.tick(at(9, 45));
   d.focus(at(9, 50), "neutral");
-  const waiting = d.tick(at(10, 1));
-  assert.equal(waiting.phase, "waiting");
-  assert.equal(island(waiting, at(10, 1)), null);
+  return d.tick(at(10, 1));
+}
+
+test("还没开始：左边是时钟，右边是灰色的一整段，展开有开始按钮；没有轨迹和分心", () => {
+  const s = day().tick(at(9, 0));
+  assert.equal(s.phase, "idle");
+  const c = island(s, at(9, 5));
+  assert.deepEqual(c.closed.left, { type: "icon", name: "Clock" });
+  // 停在一段的开头：45 分钟，不走
+  assert.equal(c.closed.right.color, "#918d9f");
+  assert.equal(c.closed.right.start, new Date(at(9, 0)).toISOString());
+  assert.equal(c.closed.right.end, new Date(at(9, 45)).toISOString());
+  assert.equal(c.closed.right.pausedAt, c.closed.right.start);
+  assert.deepEqual(c.open.right, [c.closed.right, { type: "button", id: "start", icon: "Play" }]);
+  assert.deepEqual(c.open.topRight.text, [{ text: "未开始", bold: true }]);
+  assert.deepEqual(c.open.left, []);
+  assert.equal(c.open.bottomRight, undefined);
+  // 等多久都一样，不用重交
+  assert.deepEqual(island(s, at(11, 0)), c);
+  // 有今日目标就放目标
+  const items = [{ id: "code", seconds: 30 * 60, superCategory: { id: "work" } }];
+  assert.deepEqual(F.content(s, defaults, at(9, 5), "zh-CN", items).open.left.map((x) => x.type), ["text"]);
+});
+
+test("等下一段：也是时钟和灰色的一整段，展开有轨迹和分心，没有按钮", () => {
+  const s = waiting();
+  assert.equal(s.phase, "waiting");
+  const c = island(s, at(10, 1));
+  assert.deepEqual(c.closed.left, { type: "icon", name: "Clock" });
+  assert.equal(c.closed.right.color, "#918d9f");
+  // 从休息结束的 10:00 起的一整段
+  assert.equal(c.closed.right.start, new Date(at(10, 0)).toISOString());
+  assert.equal(c.closed.right.pausedAt, new Date(at(10, 0)).toISOString());
+  assert.deepEqual(c.open.right, [c.closed.right]);
+  assert.deepEqual(c.open.topRight.text, [{ text: "等下一段", bold: true }]);
+  assert.deepEqual(c.open.left.map((x) => x.type), ["cells"]);
+  assert.ok(c.open.left[0].colors.every((color) => color === null));
+  assert.equal(c.open.bottomRight.text[1].text, "0");
+});
+
+test("不是工作日：只放一个时钟，鼠标移上去不展开", () => {
+  // 2026-10-24 是周六
+  const saturday = new Date(2026, 9, 24, 10, 0).getTime();
+  const s = C.step(null, defaults, { type: "tick" }, saturday, "zh-CN").state;
+  assert.deepEqual(island(s, saturday), { closed: { left: { type: "icon", name: "Clock" } } });
 });
 
 test("计时时：左边是小类的白色图标，右边绿色倒数本段，展开有暂停按钮", () => {
@@ -188,11 +229,13 @@ test("每种语言的字都在岛的上限里", () => {
   const goals = [{ target: { type: "super", id: "work" }, rule: "atLeast", minutes: 24 * 60 }];
   const items = [{ id: "code", seconds: (24 * 60 - 1) * 60, superCategory: { id: "work" } }];
   const joined = (text) => text.text.map((r) => r.text).join("");
-  for (const s of [d.tick(at(9, 1)), d.tick(at(9, 7)), d.pause(at(9, 8))]) {
+  const idle = day().tick(at(9, 0));
+  for (const s of [idle, d.tick(at(9, 1)), d.tick(at(9, 7)), d.pause(at(9, 8)), waiting()]) {
     s.distractions = 999;
     for (const lang of I.LOCALES) {
       const c = F.content(s, { ...defaults, goals }, at(9, 9), lang, items);
-      for (const text of [c.open.topRight, c.open.bottomRight]) {
+      // 还没开始时没有分心那一行
+      for (const text of [c.open.topRight, c.open.bottomRight].filter(Boolean)) {
         assert.ok(F.width(joined(text)) <= 20, `${lang} ${s.phase} ${joined(text)}`);
         assert.ok(text.text.every((r) => r.text !== ""), `${lang} 有空的一段`);
       }
@@ -206,20 +249,22 @@ test("每种语言的字都在岛的上限里", () => {
 
 test("右上角的阶段名每种语言都不超过 12 宽：再长岛就会变宽", () => {
   for (const lang of I.LOCALES) {
-    for (const phase of ["working", "slacking", "paused", "resting"]) {
+    for (const phase of ["idle", "working", "slacking", "paused", "resting", "waiting"]) {
       const name = I.text(lang).islandPhase[phase];
       assert.ok(name && F.width(name) <= 12, `${lang} ${phase} ${name}`);
     }
   }
 });
 
-test("岛上放不放：默认不放；开了「最小化到灵动岛」，窗口最小化或者关着才放", () => {
+test("岛上放不放：默认不放；开了「最小化到灵动岛」，窗口最小化或者关着，没点「退出」才放", () => {
   assert.equal(defaults.minimizeToIsland, false);
-  for (const window of ["open", "minimized", "closed"]) assert.equal(F.wanted(defaults, window), false);
+  for (const window of ["open", "minimized", "closed"]) assert.equal(F.wanted(defaults, window, false), false);
   const on = { ...defaults, minimizeToIsland: true };
-  assert.equal(F.wanted(on, "open"), false);
-  assert.equal(F.wanted(on, "minimized"), true);
-  assert.equal(F.wanted(on, "closed"), true);
+  assert.equal(F.wanted(on, "open", false), false);
+  assert.equal(F.wanted(on, "minimized", false), true);
+  assert.equal(F.wanted(on, "closed", false), true);
+  assert.equal(F.wanted(on, "minimized", true), false);
+  assert.equal(F.wanted(on, "closed", true), false);
 });
 
 test("nextLimit：计时时是本段做完，休息时是休息结束，停着没有", () => {

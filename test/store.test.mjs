@@ -90,6 +90,34 @@ test("开了「最小化到灵动岛」，窗口最小化或者关着，计时�
   assert.equal(await tick("closed"), "island.hide");
 });
 
+test("还没开始也上岛；「退出」以后最小化、关掉都不上岛，窗口、页面再打开以后照常", async () => {
+  const { C, store, island, wait } = load();
+  await store.saveSettings(C.withDefaults({ minimizeToIsland: true }));
+  const tick = async (window) => {
+    await store.setWindow(window);
+    wait(1000);
+    await store.apply({ type: "tick" });
+    return island.at(-1);
+  };
+  assert.equal(await tick("closed"), "island.show");
+
+  await store.quit();
+  assert.equal(island.at(-1), "island.hide");
+  assert.equal(await tick("closed"), "island.hide");
+  assert.equal(await tick("minimized"), "island.hide");
+  // 窗口再打开：开着时照样不上岛，再最小化就上岛
+  assert.equal(await tick("open"), "island.hide");
+  assert.equal(await tick("minimized"), "island.show");
+
+  // 页面再打开（主窗口里的页面没有 window.changed）。这一边上次交的内容和现在一样，但岛是「退出」
+  // 时直接撤下的，照样要再交
+  await store.quit();
+  await store.setQuit(false);
+  wait(1000);
+  await store.apply({ type: "tick" });
+  assert.equal(island.at(-1), "island.show");
+});
+
 test("通知带着 sound 交给 Hindsight：计时提示音关着不响，打开了休息提醒响", async () => {
   for (const timerSound of [false, true]) {
     const { C, store, sent, now, wait } = load();

@@ -40,7 +40,7 @@ O plugin de foco oficial do [Hindsight](https://github.com/Tomotsugu-dev/Hindsig
 - **Alerta fora da tarefa**: depois de 5 minutos seguidos fora da tarefa, você recebe um aviso e o cronômetro pausa.
 - **Metas diárias**: por exemplo, no mínimo 6 horas de Trabalho e no máximo 2 horas de Entretenimento. Você recebe um aviso ao cumprir ou ultrapassar uma meta.
 - **Calendário do mês**: veja de relance se você cumpriu as metas em cada dia útil do mês.
-- **Suporte à ilha**: quando ativado, o cronômetro aparece na ilha enquanto a janela está minimizada ou fechada (macOS).
+- **Suporte à ilha**: quando ativado, o cronômetro aparece na ilha do Hindsight enquanto a janela está minimizada ou fechada.
 
 ## Instalação
 

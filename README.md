@@ -40,7 +40,7 @@ The official focus plugin for [Hindsight](https://github.com/Tomotsugu-dev/Hinds
 - **Off-task alert**: After 5 minutes off task in a row, you get a reminder and the timer pauses.
 - **Daily goals**: For example, at least 6 hours of Work and at most 2 hours of Entertainment. You get a reminder when you reach or exceed a goal.
 - **Monthly calendar**: See at a glance whether you met your goals on each workday this month.
-- **Island support**: When turned on, the timer shows on the island while the window is minimized or closed (macOS).
+- **Island support**: When turned on, the timer shows on Hindsight's island while the window is minimized or closed.
 
 ## Installation
 

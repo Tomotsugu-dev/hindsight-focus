@@ -666,16 +666,43 @@
     );
     const toIsland = onOffSelect(
       settings.minimizeToIsland === true,
-      (on) => (settings.minimizeToIsland = on),
+      (on) => {
+        settings.minimizeToIsland = on;
+        // 「退出」跟着出现、消失
+        renderSettings();
+      },
       "minimize-to-island",
     );
+    // 「退出」只在开了「最小化到灵动岛」时有用
+    const quit = settings.minimizeToIsland === true
+      ? row(
+          S.quit,
+          S.quitHint,
+          el("button", { type: "button", class: "button secondary", "data-focus": "quit", onclick: quitIsland }, S.quitButton),
+        )
+      : null;
     return section(
       S.interface,
       null,
       row(S.languageLabel, null, language),
       row(S.appearanceLabel, null, appearance),
       row(S.minimizeToIsland, S.minimizeToIslandHint, toIsland),
+      quit,
     );
+  }
+
+  /** 设置里的「退出」：撤下岛，之后关窗口、最小化都不上岛，直到窗口再打开。插件关不了自己的窗口，
+   * 窗口留着 */
+  async function quitIsland(e) {
+    const button = e.currentTarget;
+    button.disabled = true;
+    try {
+      await FocusStore.quit();
+    } catch (err) {
+      showError(err);
+    } finally {
+      button.disabled = false;
+    }
   }
 
   function workdaysSection() {
@@ -899,6 +926,8 @@
     $("primary").addEventListener("click", runCommand);
     watchBar();
     try {
+      // 页面又打开了：「退出」到此为止。在主窗口里打开的页面没有 window.changed，靠这里
+      await FocusStore.setQuit(false);
       settings = await FocusStore.settings();
       applyAppearance();
       applyLanguage();

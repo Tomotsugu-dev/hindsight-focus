@@ -1,5 +1,5 @@
-// 专注插件放在 Hindsight 岛上的内容：本段或者休息的计时器。只从状态、设置和今天的统计算出来，
-// 后台脚本、页面和测试算出的内容一样。要先加载 i18n.js 和 core.js。
+// 专注插件放在 Hindsight 岛上的内容：本段或者休息的计时器，没在计时的时候也放一个时钟。只从状态、
+// 设置和今天的统计算出来，后台脚本、页面和测试算出的内容一样。要先加载 i18n.js 和 core.js。
 (() => {
   const C = globalThis.FocusCore;
   const I = globalThis.FocusI18n;
@@ -13,7 +13,13 @@
   const MAX_CELLS = 60;
   // 和页面的轨迹一样，一行 15 格
   const ROW = 15;
-  const SHOWN = ["working", "slacking", "paused", "resting"];
+  // 展开的岛上的按钮，和页面上的一样：id 就是命令名，见 core.js 的 onCommand。等下一段、休息时没有
+  const BUTTONS = {
+    idle: { type: "button", id: "start", icon: "Play" },
+    working: { type: "button", id: "pause", icon: "Pause" },
+    slacking: { type: "button", id: "pause", icon: "Pause" },
+    paused: { type: "button", id: "resume", icon: "Play" },
+  };
   // 岛不收的字：控制字符（和 Rust 的 char::is_control 一样）和换行
   const UNSAFE = /[\p{Cc}\p{Zl}\p{Zp}]/gu;
 
@@ -100,42 +106,49 @@
     return { type: "text", text };
   }
 
-  /** `state` 在 `now` 时岛上放什么；不放东西时返回 null：还没开始、等下一段、不是工作日。
-   * `state` 是 FocusCore.step 算出的今天的状态，`items` 是今天的 stats.day_by_category，还没拿到
-   * 是 null */
+  /** `state` 在 `now` 时岛上放什么。每个阶段都放点东西：插件窗口最小化了、关着的时候，点岛是回到
+   * 插件页面的路。`state` 是 FocusCore.step 算出的今天的状态，`items` 是今天的
+   * stats.day_by_category，还没拿到是 null */
   function content(state, settings, now, lang, items = null) {
     const s = state;
-    if (!s || !SHOWN.includes(s.phase)) return null;
+    // 不是工作日：不计时，只放一个时钟，鼠标移上去不展开
+    if (s.phase === "idle" && !C.isWorkday(settings, now)) {
+      return { closed: { left: { type: "icon", name: "Clock" } } };
+    }
     const T = I.text(lang);
     const { rhythm } = settings;
+    const idle = s.phase === "idle";
 
     // 图标不给颜色：岛把它画成白的。没有小类（离开了、看不到的窗口）时是时钟
     let name = iconName(s.focus.category?.icon) ?? "Clock";
     if (s.phase === "resting") name = "Coffee";
     if (s.phase === "paused") name = "Pause";
+    // 还没开始、等下一段：计时器没在走，也是时钟
+    if (idle || s.phase === "waiting") name = "Clock";
     const icon = { type: "icon", name };
+    // 还没开始、等下一段时是灰的一整段
     const time = timer(s, rhythm);
+    const button = BUTTONS[s.phase];
 
-    const right = [time];
-    if (s.phase === "paused") right.push({ type: "button", id: "resume", icon: "Play" });
-    else if (s.phase !== "resting") right.push({ type: "button", id: "pause", icon: "Pause" });
-
+    // 还没开始时没有轨迹，分心也还是 0，和页面一样不放
+    const left = idle ? [] : [cells(s, rhythm, now)];
     const target = goal(settings, items);
-    return {
-      closed: { left: icon, right: time },
-      open: {
-        // 只放短的阶段名：岛居中，这里的字从刘海右边排起，字长一点岛就宽出两倍
-        topRight: { type: "text", text: [{ text: T.islandPhase[s.phase], bold: true }] },
-        left: target ? [target, cells(s, rhythm, now)] : [cells(s, rhythm, now)],
-        right,
-        bottomRight: distractions(s, T),
-      },
+    if (target) left.unshift(target);
+    const open = {
+      // 只放短的阶段名：字长一点岛就变宽。有刘海时字从刘海右边排起，岛居中，宽出的是两倍
+      topRight: { type: "text", text: [{ text: T.islandPhase[s.phase], bold: true }] },
+      left,
+      right: button ? [time, button] : [time],
     };
+    if (!idle) open.bottomRight = distractions(s, T);
+    return { closed: { left: icon, right: time }, open };
   }
 
-  /** 岛上该不该放东西：设置里开了「最小化到灵动岛」，并且插件窗口最小化了或者关着。`window` 是
-   * Hindsight 的 window.changed 说的："open"、"minimized" 或 "closed" */
-  const wanted = (settings, window) => settings.minimizeToIsland === true && window !== "open";
+  /** 岛上该不该放东西：设置里开了「最小化到灵动岛」，插件窗口最小化了或者关着，并且没点「退出」。
+   * `window` 是 Hindsight 的 window.changed 说的："open"、"minimized" 或 "closed"；`quit` 见
+   * FocusStore.quit */
+  const wanted = (settings, window, quit) =>
+    settings.minimizeToIsland === true && window !== "open" && !quit;
 
   globalThis.FocusIsland = { content, width, wanted };
 })();
